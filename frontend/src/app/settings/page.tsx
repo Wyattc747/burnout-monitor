@@ -42,7 +42,7 @@ export default function SettingsPage() {
   const { data: integrationStatus } = useQuery({
     queryKey: ['integration-status'],
     queryFn: async () => {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('token');
       const res = await fetch('http://localhost:3001/api/integrations/status', {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -103,7 +103,7 @@ export default function SettingsPage() {
   };
 
   const connectIntegration = async (provider: string) => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('token');
     const res = await fetch(`http://localhost:3001/api/integrations/${provider}/auth`, {
       headers: { Authorization: `Bearer ${token}` },
     });

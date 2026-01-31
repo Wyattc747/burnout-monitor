@@ -20,7 +20,7 @@ interface TerraStatus {
 }
 
 async function fetchIntegrationStatus(): Promise<{ terra: TerraStatus }> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/integrations/status', {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -29,7 +29,7 @@ async function fetchIntegrationStatus(): Promise<{ terra: TerraStatus }> {
 }
 
 async function connectDevice(): Promise<{ url: string }> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/integrations/terra/widget', {
     method: 'POST',
     headers: {

@@ -27,7 +27,7 @@ interface AvailableEmployee {
 }
 
 async function fetchTeamMembers(): Promise<TeamMember[]> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/teams/members', {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -36,7 +36,7 @@ async function fetchTeamMembers(): Promise<TeamMember[]> {
 }
 
 async function fetchAvailableEmployees(): Promise<AvailableEmployee[]> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/teams/available', {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -45,7 +45,7 @@ async function fetchAvailableEmployees(): Promise<AvailableEmployee[]> {
 }
 
 async function addTeamMember(employeeId: string): Promise<void> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch(`http://localhost:3001/api/teams/members/${employeeId}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
@@ -54,7 +54,7 @@ async function addTeamMember(employeeId: string): Promise<void> {
 }
 
 async function removeTeamMember(employeeId: string): Promise<void> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch(`http://localhost:3001/api/teams/members/${employeeId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },

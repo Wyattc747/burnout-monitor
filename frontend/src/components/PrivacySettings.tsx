@@ -16,7 +16,7 @@ interface PrivacySettingsData {
 }
 
 async function fetchPrivacySettings(): Promise<PrivacySettingsData> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/wellness/privacy', {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -25,7 +25,7 @@ async function fetchPrivacySettings(): Promise<PrivacySettingsData> {
 }
 
 async function updatePrivacySettings(settings: Partial<PrivacySettingsData>): Promise<void> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/wellness/privacy', {
     method: 'PUT',
     headers: {

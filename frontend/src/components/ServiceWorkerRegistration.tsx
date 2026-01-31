@@ -62,7 +62,7 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
     }
 
     // Send subscription to backend
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('token');
     if (token) {
       await fetch('http://localhost:3001/api/wellness/reminders', {
         method: 'PUT',
@@ -103,7 +103,7 @@ export async function unsubscribeFromPush(): Promise<boolean> {
     }
 
     // Update backend
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('token');
     if (token) {
       await fetch('http://localhost:3001/api/wellness/reminders', {
         method: 'PUT',

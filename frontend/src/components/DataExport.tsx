@@ -9,7 +9,7 @@ export function DataExport() {
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('token');
       const res = await fetch('http://localhost:3001/api/wellness/export', {
         headers: { Authorization: `Bearer ${token}` },
       });
