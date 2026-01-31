@@ -66,8 +66,8 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <Link href="/dashboard" className="flex items-center gap-2" onClick={onClose}>
-              <img src="/logo.svg" alt="Herd Shepherd" className="h-8 w-auto" />
-              <span className="font-bold text-gray-900 dark:text-white">Herd Shepherd</span>
+              <img src="/logo.svg" alt="ShepHerd" className="h-8 w-auto" />
+              <span className="font-bold text-gray-900 dark:text-white">ShepHerd</span>
             </Link>
             <button
               onClick={onClose}

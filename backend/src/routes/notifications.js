@@ -167,7 +167,7 @@ router.post('/sms/test', requireRole('manager'), async (req, res) => {
       });
     }
 
-    const testMessage = `[Herd Shepherd] This is a test message. Your SMS notifications are working correctly!`;
+    const testMessage = `[ShepHerd] This is a test message. Your SMS notifications are working correctly!`;
     const result = await sendSMS(phoneNumber, testMessage);
 
     if (result.success) {

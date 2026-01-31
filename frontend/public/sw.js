@@ -1,6 +1,6 @@
-// Herd Shepherd Service Worker
-const CACHE_NAME = 'herd-shepherd-v1';
-const STATIC_CACHE = 'herd-shepherd-static-v1';
+// ShepHerd Service Worker
+const CACHE_NAME = 'shepherd-v1';
+const STATIC_CACHE = 'shepherd-static-v1';
 
 // Assets to cache immediately
 const STATIC_ASSETS = [
@@ -98,7 +98,7 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Herd Shepherd', options)
+    self.registration.showNotification(data.title || 'ShepHerd', options)
   );
 });
 
@@ -164,7 +164,7 @@ async function syncCheckins() {
 
 function openDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('herd-shepherd', 1);
+    const request = indexedDB.open('shepherd', 1);
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);

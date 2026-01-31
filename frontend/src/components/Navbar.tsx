@@ -44,9 +44,9 @@ export function Navbar() {
 
               {/* Logo */}
               <Link href="/dashboard" className="flex items-center gap-2">
-                <img src="/logo.svg" alt="Herd Shepherd" className="h-8 w-auto" />
+                <img src="/logo.svg" alt="ShepHerd" className="h-8 w-auto" />
                 <span className="font-bold text-gray-900 dark:text-white hidden sm:inline">
-                  Herd Shepherd
+                  ShepHerd
                 </span>
               </Link>
 

@@ -73,7 +73,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Herd Shepherd API running on http://localhost:${PORT}`);
+  console.log(`ShepHerd API running on http://localhost:${PORT}`);
 });
 
 module.exports = app;

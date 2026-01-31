@@ -104,7 +104,7 @@ async function sendAlertNotification(alert) {
     const results = [];
 
     for (const manager of managersResult.rows) {
-      const message = `[Herd Shepherd] ${alert.title}. ${alert.message}`;
+      const message = `[ShepHerd] ${alert.title}. ${alert.message}`;
       const result = await sendSMS(manager.sms_phone_number, message, alert.id, manager.id);
       results.push(result);
     }

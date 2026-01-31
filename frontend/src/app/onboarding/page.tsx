@@ -11,7 +11,7 @@ import { integrationsApi } from '@/lib/api';
 type OnboardingStep = 'welcome' | 'health-devices' | 'work-systems' | 'complete';
 
 const steps: { id: OnboardingStep; title: string; description: string }[] = [
-  { id: 'welcome', title: 'Welcome', description: 'Get started with Herd Shepherd' },
+  { id: 'welcome', title: 'Welcome', description: 'Get started with ShepHerd' },
   { id: 'health-devices', title: 'Health Devices', description: 'Connect your wearables' },
   { id: 'work-systems', title: 'Work Systems', description: 'Link productivity tools' },
   { id: 'complete', title: 'All Set', description: 'You\'re ready to go' },
@@ -384,10 +384,10 @@ function WelcomeStep({ user, onContinue }: { user: any; onContinue: () => void }
   return (
     <div className="text-center py-8">
       <div className="w-24 h-24 mx-auto mb-6 bg-indigo-100 rounded-full flex items-center justify-center">
-        <img src="/logo.svg" alt="Herd Shepherd" className="w-16 h-16" />
+        <img src="/logo.svg" alt="ShepHerd" className="w-16 h-16" />
       </div>
       <h2 className="text-2xl font-bold text-gray-900 mb-2">
-        Welcome to Herd Shepherd, {user?.email?.split('@')[0]}!
+        Welcome to ShepHerd, {user?.email?.split('@')[0]}!
       </h2>
       <p className="text-gray-600 mb-8 max-w-md mx-auto">
         We're here to help you maintain peak performance while protecting your wellbeing.
@@ -680,7 +680,7 @@ function CompleteStep({
       </div>
       <h2 className="text-2xl font-bold text-gray-900 mb-2">You're All Set!</h2>
       <p className="text-gray-600 mb-8 max-w-md mx-auto">
-        Your Herd Shepherd account is ready. Here's a summary of your setup:
+        Your ShepHerd account is ready. Here's a summary of your setup:
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-left max-w-xl mx-auto">

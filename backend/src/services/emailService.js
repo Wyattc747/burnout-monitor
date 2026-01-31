@@ -95,7 +95,7 @@ async function sendWeeklySummary(userId, employeeId) {
                 <!-- Header -->
                 <tr>
                   <td style="background: linear-gradient(135deg, #059669, #0d9488); padding: 30px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Herd Shepherd</h1>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 24px;">ShepHerd</h1>
                     <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your Weekly Wellness Summary</p>
                   </td>
                 </tr>
@@ -191,7 +191,7 @@ async function sendWeeklySummary(userId, employeeId) {
 
     // Send email
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"Herd Shepherd" <noreply@herdshepherd.com>',
+      from: process.env.SMTP_FROM || '"ShepHerd" <noreply@shepherd.com>',
       to: email,
       subject: `Your Weekly Wellness Summary - ${first_name}`,
       html,
@@ -273,7 +273,7 @@ async function sendCheckinReminder(userId, employeeId) {
     `;
 
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"Herd Shepherd" <noreply@herdshepherd.com>',
+      from: process.env.SMTP_FROM || '"ShepHerd" <noreply@shepherd.com>',
       to: email,
       subject: 'Daily Wellness Check-in Reminder',
       html,

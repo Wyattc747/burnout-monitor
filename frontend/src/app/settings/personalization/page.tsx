@@ -41,7 +41,7 @@ export default function PersonalizationPage() {
           Personalization
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Customize how Herd Shepherd understands your unique needs and circumstances.
+          Customize how ShepHerd understands your unique needs and circumstances.
         </p>
       </div>
 

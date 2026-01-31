@@ -1,6 +1,6 @@
 {
-  "name": "Herd Shepherd",
-  "short_name": "Herd Shepherd",
+  "name": "ShepHerd",
+  "short_name": "ShepHerd",
   "description": "Employee burnout monitoring and wellness tracking",
   "start_url": "/",
   "display": "standalone",

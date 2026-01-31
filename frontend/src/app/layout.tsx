@@ -6,14 +6,14 @@ import { Providers } from '@/lib/providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Herd Shepherd',
+  title: 'ShepHerd',
   description: 'Employee burnout monitoring and wellness tracking',
   manifest: '/manifest.json',
   themeColor: '#059669',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Herd Shepherd',
+    title: 'ShepHerd',
   },
   viewport: {
     width: 'device-width',
