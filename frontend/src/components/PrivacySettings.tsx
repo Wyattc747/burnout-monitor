@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+
 interface PrivacySettingsData {
   showHealthToManager: boolean;
   showSleepToManager: boolean;
@@ -17,7 +19,7 @@ interface PrivacySettingsData {
 
 async function fetchPrivacySettings(): Promise<PrivacySettingsData> {
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3001/api/wellness/privacy', {
+  const res = await fetch('${API_URL}/api/wellness/privacy', {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch privacy settings');
@@ -26,7 +28,7 @@ async function fetchPrivacySettings(): Promise<PrivacySettingsData> {
 
 async function updatePrivacySettings(settings: Partial<PrivacySettingsData>): Promise<void> {
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3001/api/wellness/privacy', {
+  const res = await fetch('${API_URL}/api/wellness/privacy', {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${token}`,

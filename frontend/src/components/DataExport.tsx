@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 export function DataExport() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportComplete, setExportComplete] = useState(false);
@@ -10,7 +12,7 @@ export function DataExport() {
     setIsExporting(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/wellness/export', {
+      const res = await fetch(`${API_URL}/api/wellness/export`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

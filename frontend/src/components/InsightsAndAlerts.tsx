@@ -28,9 +28,11 @@ interface PredictiveAlert {
   createdAt: string;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 async function fetchPatterns(): Promise<DetectedPattern[]> {
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3001/api/wellness/patterns', {
+  const res = await fetch(`${API_URL}/api/wellness/patterns`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch patterns');
@@ -39,7 +41,7 @@ async function fetchPatterns(): Promise<DetectedPattern[]> {
 
 async function fetchAlerts(): Promise<PredictiveAlert[]> {
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3001/api/wellness/alerts', {
+  const res = await fetch(`${API_URL}/api/wellness/alerts`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch alerts');
@@ -48,7 +50,7 @@ async function fetchAlerts(): Promise<PredictiveAlert[]> {
 
 async function acknowledgeAlert(id: string): Promise<void> {
   const token = localStorage.getItem('token');
-  const res = await fetch(`http://localhost:3001/api/wellness/alerts/${id}/acknowledge`, {
+  const res = await fetch(`${API_URL}/api/wellness/alerts/${id}/acknowledge`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -57,7 +59,7 @@ async function acknowledgeAlert(id: string): Promise<void> {
 
 async function dismissPattern(id: string): Promise<void> {
   const token = localStorage.getItem('token');
-  const res = await fetch(`http://localhost:3001/api/wellness/patterns/${id}/dismiss`, {
+  const res = await fetch(`${API_URL}/api/wellness/patterns/${id}/dismiss`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   });

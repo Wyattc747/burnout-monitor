@@ -2,6 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+
 interface EmailMetric {
   date: string;
   emailsReceived: number;
@@ -15,7 +17,7 @@ interface EmailMetric {
 
 async function fetchEmailMetrics(): Promise<EmailMetric[]> {
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3001/api/integrations/gmail/metrics?limit=14', {
+  const res = await fetch('${API_URL}/api/integrations/gmail/metrics?limit=14', {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch email metrics');

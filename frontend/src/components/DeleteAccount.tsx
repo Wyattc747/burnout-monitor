@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+
 export function DeleteAccount() {
   const router = useRouter();
   const [showConfirm, setShowConfirm] = useState(false);
@@ -27,7 +29,7 @@ export function DeleteAccount() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/auth/account', {
+      const res = await fetch('${API_URL}/api/auth/account', {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import { MessageCircle, Send, Phone, X, Smartphone, ChevronRight, Calendar, TrendingUp, Heart, Plus } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+
 interface Message {
   id: string;
   type: 'user' | 'mentor';
@@ -202,7 +204,7 @@ export function WellnessMentorDemo({ onClose }: { onClose: () => void }) {
   const addLifeEvent = async (eventType: string, eventLabel: string, impactLevel: 'low' | 'medium' | 'high') => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://localhost:3001/api/personalization/life-events', {
+      const res = await fetch('${API_URL}/api/personalization/life-events', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

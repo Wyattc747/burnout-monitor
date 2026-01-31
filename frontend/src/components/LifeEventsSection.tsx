@@ -6,6 +6,8 @@ import { personalizationApi } from '@/lib/api';
 import { clsx } from 'clsx';
 import { Plus, X, Calendar, Heart, Briefcase, Home, Plane, Baby, GraduationCap, AlertCircle } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 interface LifeEvent {
   id: string;
   eventType: string;
@@ -45,7 +47,7 @@ export function LifeEventsSection() {
   const addLifeEvent = useMutation({
     mutationFn: async (event: any) => {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/personalization/life-events', {
+      const res = await fetch(`${API_URL}/api/personalization/life-events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,7 +70,7 @@ export function LifeEventsSection() {
   const removeLifeEvent = useMutation({
     mutationFn: async (eventId: string) => {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3001/api/personalization/life-events/${eventId}`, {
+      const res = await fetch(`${API_URL}/api/personalization/life-events/${eventId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

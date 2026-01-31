@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { teamsApi } from '@/lib/api';
 import { clsx } from 'clsx';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 interface TeamAggregates {
   zoneDistribution: {
     green: number;
@@ -30,7 +32,7 @@ interface TeamPattern {
 
 async function fetchTeamAggregates(): Promise<TeamAggregates> {
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3001/api/teams/aggregates', {
+  const res = await fetch(`${API_URL}/api/teams/aggregates`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch aggregates');

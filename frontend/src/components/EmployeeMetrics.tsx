@@ -2,6 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+
 interface EmailMetric {
   date: string;
   emailsReceived: number;
@@ -22,7 +24,7 @@ interface WorkMetric {
 
 async function fetchEmployeeEmailMetrics(employeeId: string): Promise<EmailMetric[]> {
   const token = localStorage.getItem('token');
-  const res = await fetch(`http://localhost:3001/api/employees/${employeeId}/email-metrics`, {
+  const res = await fetch(`${API_URL}/api/employees/${employeeId}/email-metrics`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) return [];
@@ -31,7 +33,7 @@ async function fetchEmployeeEmailMetrics(employeeId: string): Promise<EmailMetri
 
 async function fetchEmployeeWorkMetrics(employeeId: string): Promise<WorkMetric[]> {
   const token = localStorage.getItem('token');
-  const res = await fetch(`http://localhost:3001/api/employees/${employeeId}/work`, {
+  const res = await fetch(`${API_URL}/api/employees/${employeeId}/work`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) return [];

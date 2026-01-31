@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+
 export function ServiceWorkerRegistration() {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -64,7 +66,7 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
     // Send subscription to backend
     const token = localStorage.getItem('token');
     if (token) {
-      await fetch('http://localhost:3001/api/wellness/reminders', {
+      await fetch('${API_URL}/api/wellness/reminders', {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -105,7 +107,7 @@ export async function unsubscribeFromPush(): Promise<boolean> {
     // Update backend
     const token = localStorage.getItem('token');
     if (token) {
-      await fetch('http://localhost:3001/api/wellness/reminders', {
+      await fetch('${API_URL}/api/wellness/reminders', {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,

@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ZoneIndicator } from './ZoneIndicator';
 import { Avatar } from './Avatar';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 interface TeamMember {
   id: string;
   firstName: string;
@@ -28,7 +30,7 @@ interface AvailableEmployee {
 
 async function fetchTeamMembers(): Promise<TeamMember[]> {
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3001/api/teams/members', {
+  const res = await fetch(`${API_URL}/api/teams/members`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch team members');
@@ -37,7 +39,7 @@ async function fetchTeamMembers(): Promise<TeamMember[]> {
 
 async function fetchAvailableEmployees(): Promise<AvailableEmployee[]> {
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3001/api/teams/available', {
+  const res = await fetch(`${API_URL}/api/teams/available`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch available employees');
@@ -46,7 +48,7 @@ async function fetchAvailableEmployees(): Promise<AvailableEmployee[]> {
 
 async function addTeamMember(employeeId: string): Promise<void> {
   const token = localStorage.getItem('token');
-  const res = await fetch(`http://localhost:3001/api/teams/members/${employeeId}`, {
+  const res = await fetch(`${API_URL}/api/teams/members/${employeeId}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -55,7 +57,7 @@ async function addTeamMember(employeeId: string): Promise<void> {
 
 async function removeTeamMember(employeeId: string): Promise<void> {
   const token = localStorage.getItem('token');
-  const res = await fetch(`http://localhost:3001/api/teams/members/${employeeId}`, {
+  const res = await fetch(`${API_URL}/api/teams/members/${employeeId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });

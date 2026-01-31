@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+
 interface FeedbackButtonProps {
   resourceId?: string;
   recommendationType: 'resource' | 'action' | 'prediction';
@@ -19,7 +21,7 @@ export function FeedbackButtons({ resourceId, recommendationType, itemTitle, onF
   const submitFeedback = useMutation({
     mutationFn: async (type: 'helpful' | 'not_helpful' | 'skip') => {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/personalization/feedback', {
+      const res = await fetch('${API_URL}/api/personalization/feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,7 +94,7 @@ export function ScoreFeedback({ actualScore, onFeedback }: ScoreFeedbackProps) {
   const submitFeedback = useMutation({
     mutationFn: async (score: number) => {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/personalization/score-feedback', {
+      const res = await fetch('${API_URL}/api/personalization/score-feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

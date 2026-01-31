@@ -13,6 +13,8 @@ import { DeviceConnection } from '@/components/DeviceConnection';
 import { DeleteAccount } from '@/components/DeleteAccount';
 import { clsx } from 'clsx';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 type SettingsTab = 'profile' | 'notifications' | 'privacy' | 'integrations' | 'data';
 
 export default function SettingsPage() {
@@ -44,7 +46,7 @@ export default function SettingsPage() {
     queryKey: ['integration-status'],
     queryFn: async () => {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/integrations/status', {
+      const res = await fetch(`${API_URL}/api/integrations/status`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to fetch');
@@ -105,7 +107,7 @@ export default function SettingsPage() {
 
   const connectIntegration = async (provider: string) => {
     const token = localStorage.getItem('token');
-    const res = await fetch(`http://localhost:3001/api/integrations/${provider}/auth`, {
+    const res = await fetch(`${API_URL}/api/integrations/${provider}/auth`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();

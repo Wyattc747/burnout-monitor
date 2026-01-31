@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 interface ReminderSettingsData {
   checkinReminder: {
     enabled: boolean;
@@ -23,7 +25,7 @@ interface ReminderSettingsData {
 
 async function fetchReminderSettings(): Promise<ReminderSettingsData> {
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3001/api/wellness/reminders', {
+  const res = await fetch(`${API_URL}/api/wellness/reminders`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch reminder settings');
@@ -32,7 +34,7 @@ async function fetchReminderSettings(): Promise<ReminderSettingsData> {
 
 async function updateReminderSettings(settings: Partial<ReminderSettingsData>): Promise<void> {
   const token = localStorage.getItem('token');
-  const res = await fetch('http://localhost:3001/api/wellness/reminders', {
+  const res = await fetch(`${API_URL}/api/wellness/reminders`, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${token}`,
