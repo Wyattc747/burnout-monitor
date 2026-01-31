@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -43,12 +42,8 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await authApi.register(formData);
-      localStorage.setItem('token', response.token);
-      if (response.employeeId) {
-        localStorage.setItem('employeeId', response.employeeId);
-      }
-      router.push('/onboarding');
+      await register(formData);
+      // Register function handles redirect to /onboarding
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed');
     } finally {

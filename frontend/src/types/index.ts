@@ -82,6 +82,41 @@ export interface Explanation {
   readinessScore: number;
   factors: Factor[];
   recommendations: Recommendations;
+  context?: {
+    interactionEffects?: Array<{
+      name: string;
+      impact?: string;
+      description: string;
+      severity: string;
+    }>;
+    daysSinceVacation?: number;
+    restDeficit?: boolean;
+    vacationAlert?: {
+      daysSince: number;
+      daysSinceRest: number;
+      message: string;
+    };
+    calibrationInfo?: {
+      applied: boolean;
+      message: string;
+      discrepancy: number;
+    };
+    activeLifeEvents?: Array<{
+      label: string;
+      impact: string;
+    }>;
+    dayContext?: {
+      label: string;
+      message: string;
+    };
+    calibration?: {
+      personalPreferences: boolean;
+      lifeEvents: Array<{
+        eventType: string;
+        eventLabel: string;
+      }>;
+    };
+  };
 }
 
 export interface Alert {

@@ -42,9 +42,9 @@ export default function OnboardingPage() {
   const searchParams = useSearchParams();
 
   // Check for OAuth callback status
-  const callbackStatus = searchParams.get('status');
-  const callbackStep = searchParams.get('step');
-  const callbackProvider = searchParams.get('provider');
+  const callbackStatus = searchParams?.get('status');
+  const callbackStep = searchParams?.get('step');
+  const callbackProvider = searchParams?.get('provider');
 
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [healthDevices, setHealthDevices] = useState<DeviceConnection[]>([

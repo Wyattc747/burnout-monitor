@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { clsx } from 'clsx';
-import { LayoutDashboard, Heart, Settings, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Heart, Settings, ChevronDown, TrendingUp, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { alertsApi } from '@/lib/api';
 import { Avatar } from './Avatar';
 import { ThemeToggle } from './ThemeToggle';
 import { MobileNav, MobileMenuButton } from './MobileNav';
+import { DataFreshnessIndicator } from './DataFreshness';
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -55,19 +56,32 @@ export function Navbar() {
                 <NavLink href="/dashboard" active={pathname === '/dashboard'} icon={<LayoutDashboard className="w-4 h-4" />}>
                   Dashboard
                 </NavLink>
+                {!isManager && (
+                  <>
+                    <NavLink href="/dashboard/insights" active={pathname === '/dashboard/insights'} icon={<TrendingUp className="w-4 h-4" />}>
+                      Insights
+                    </NavLink>
+                    <NavLink href="/dashboard/metrics" active={pathname === '/dashboard/metrics'} icon={<BarChart3 className="w-4 h-4" />}>
+                      Metrics
+                    </NavLink>
+                  </>
+                )}
                 <NavLink href="/wellness" active={pathname === '/wellness'} icon={<Heart className="w-4 h-4" />}>
                   Wellness
                 </NavLink>
-                {isManager && (
-                  <NavLink href="/settings" active={pathname === '/settings'} icon={<Settings className="w-4 h-4" />}>
-                    Settings
-                  </NavLink>
-                )}
+                <NavLink href="/settings" active={pathname === '/settings'} icon={<Settings className="w-4 h-4" />}>
+                  Settings
+                </NavLink>
               </div>
             </div>
 
             {/* Right side */}
             <div className="flex items-center gap-2 sm:gap-4">
+              {/* Data Freshness Indicator */}
+              <div className="hidden sm:block">
+                <DataFreshnessIndicator />
+              </div>
+
               {/* Alert Badge */}
               {unacknowledgedCount > 0 && (
                 <div className="hidden sm:block">
@@ -148,13 +162,6 @@ export function Navbar() {
                             onClick={() => setShowUserMenu(false)}
                           >
                             Personalization
-                          </Link>
-                          <Link
-                            href="/onboarding"
-                            className="dropdown-item"
-                            onClick={() => setShowUserMenu(false)}
-                          >
-                            Connections
                           </Link>
                         </>
                       )}

@@ -11,8 +11,18 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
+interface RegisterData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  department?: string;
+  jobTitle?: string;
+}
+
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   employeeId: string | null;
@@ -82,6 +92,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/dashboard');
   };
 
+  const register = async (data: RegisterData) => {
+    const response = await authApi.register(data);
+    localStorage.setItem('token', response.token);
+    if (response.employeeId) {
+      localStorage.setItem('employeeId', response.employeeId);
+      setEmployeeId(response.employeeId);
+    }
+
+    const userData = await authApi.getMe();
+    setState({
+      user: userData,
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    // Redirect to onboarding after registration
+    router.push('/onboarding');
+  };
+
   const logout = async () => {
     try {
       await authApi.logout();
@@ -113,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, refreshUser, employeeId }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, refreshUser, employeeId }}>
       {children}
     </AuthContext.Provider>
   );
@@ -128,7 +157,7 @@ export function useAuth() {
 }
 
 export function useRequireAuth(requiredRole?: UserRole) {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -141,5 +170,5 @@ export function useRequireAuth(requiredRole?: UserRole) {
     }
   }, [isLoading, isAuthenticated, user, requiredRole, router]);
 
-  return { user, isLoading, isAuthenticated };
+  return { user, isLoading, isAuthenticated, refreshUser };
 }

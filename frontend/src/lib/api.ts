@@ -120,6 +120,16 @@ export const employeesApi = {
     const { data } = await api.get(`/employees/${id}/explanation`);
     return data;
   },
+
+  getPrediction: async (id: string) => {
+    const { data } = await api.get(`/employees/${id}/prediction`);
+    return data;
+  },
+
+  getRecommendedResources: async (id: string) => {
+    const { data } = await api.get(`/employees/${id}/recommended-resources`);
+    return data;
+  },
 };
 
 // Alerts

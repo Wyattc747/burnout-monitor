@@ -17,7 +17,7 @@ export default function EmployeeDetailPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const employeeId = params.id as string;
+  const employeeId = params?.id as string;
   const [metricsTab, setMetricsTab] = useState<'hours' | 'tasks' | 'breakdown'>('hours');
   const [isBotOpen, setIsBotOpen] = useState(false);
 

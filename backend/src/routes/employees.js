@@ -455,4 +455,201 @@ router.get('/:id/explanation', canAccessEmployee, async (req, res) => {
   }
 });
 
+// GET /api/employees/:id/prediction - Get burnout trajectory prediction
+router.get('/:id/prediction', canAccessEmployee, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get last 14 days of zone history for trend analysis
+    const historyResult = await db.query(`
+      SELECT date, burnout_score, readiness_score, zone
+      FROM zone_history
+      WHERE employee_id = $1
+      ORDER BY date DESC
+      LIMIT 14
+    `, [id]);
+
+    if (historyResult.rows.length < 3) {
+      return res.json({
+        hasPrediction: false,
+        message: 'Insufficient data for prediction',
+        daysOfData: historyResult.rows.length,
+      });
+    }
+
+    const history = historyResult.rows.reverse(); // Oldest first
+    const currentScore = parseFloat(history[history.length - 1].burnout_score);
+    const currentZone = history[history.length - 1].zone;
+
+    // Calculate trend using linear regression
+    const n = history.length;
+    const scores = history.map(h => parseFloat(h.burnout_score));
+    const xSum = (n * (n - 1)) / 2;
+    const xSquaredSum = (n * (n - 1) * (2 * n - 1)) / 6;
+    const ySum = scores.reduce((a, b) => a + b, 0);
+    const xySum = scores.reduce((sum, y, x) => sum + x * y, 0);
+
+    const slope = (n * xySum - xSum * ySum) / (n * xSquaredSum - xSum * xSum);
+    const dailyChange = slope;
+
+    // Predict days until RED zone (burnout_score >= 70)
+    const redThreshold = 70;
+    let daysUntilRed = null;
+    let predictedTrajectory = [];
+
+    if (dailyChange > 0 && currentScore < redThreshold) {
+      daysUntilRed = Math.ceil((redThreshold - currentScore) / dailyChange);
+      if (daysUntilRed > 30) daysUntilRed = null; // Don't predict beyond 30 days
+    }
+
+    // Generate 7-day forecast
+    for (let i = 1; i <= 7; i++) {
+      const predictedScore = Math.min(100, Math.max(0, currentScore + dailyChange * i));
+      const predictedZone = predictedScore >= 70 ? 'red' : predictedScore <= 30 ? 'green' : 'yellow';
+      predictedTrajectory.push({
+        day: i,
+        predictedScore: Math.round(predictedScore),
+        predictedZone,
+        confidence: Math.max(50, 95 - i * 5), // Confidence decreases over time
+      });
+    }
+
+    // Determine trend direction and severity
+    let trendDirection = 'stable';
+    let trendSeverity = 'low';
+
+    if (dailyChange > 2) {
+      trendDirection = 'worsening';
+      trendSeverity = dailyChange > 4 ? 'high' : 'medium';
+    } else if (dailyChange < -2) {
+      trendDirection = 'improving';
+      trendSeverity = dailyChange < -4 ? 'high' : 'medium';
+    }
+
+    res.json({
+      hasPrediction: true,
+      currentScore: Math.round(currentScore),
+      currentZone,
+      trend: {
+        direction: trendDirection,
+        severity: trendSeverity,
+        dailyChange: Math.round(dailyChange * 10) / 10,
+        description: trendDirection === 'worsening'
+          ? `Burnout risk increasing by ~${Math.abs(Math.round(dailyChange))} points/day`
+          : trendDirection === 'improving'
+            ? `Burnout risk decreasing by ~${Math.abs(Math.round(dailyChange))} points/day`
+            : 'Burnout risk is stable',
+      },
+      daysUntilRed: daysUntilRed,
+      redZoneWarning: daysUntilRed !== null && daysUntilRed <= 7
+        ? `At current pace, you may reach burnout risk in ${daysUntilRed} day${daysUntilRed === 1 ? '' : 's'}`
+        : null,
+      forecast: predictedTrajectory,
+      daysAnalyzed: n,
+    });
+  } catch (err) {
+    console.error('Get prediction error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to get prediction' });
+  }
+});
+
+// GET /api/employees/:id/recommended-resources - Get personalized wellness resource recommendations
+router.get('/:id/recommended-resources', canAccessEmployee, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get current zone and explanation factors
+    const zoneResult = await db.query(`
+      SELECT zone, burnout_score, readiness_score, explanation
+      FROM zone_history
+      WHERE employee_id = $1
+      ORDER BY date DESC
+      LIMIT 1
+    `, [id]);
+
+    if (zoneResult.rows.length === 0) {
+      return res.json({ recommendations: [] });
+    }
+
+    const { zone, burnout_score, explanation } = zoneResult.rows[0];
+    const factors = explanation?.factors || [];
+
+    // Map factors to resource categories
+    const categoryMapping = {
+      'Sleep Quality': ['sleep', 'mindfulness'],
+      'Stress Level (HRV)': ['stress', 'mindfulness'],
+      'Work Hours': ['productivity', 'stress'],
+      'Recovery': ['sleep', 'exercise'],
+      'Activity Level': ['exercise'],
+      'Work-Life Balance': ['productivity', 'mindfulness'],
+    };
+
+    // Find negative factors and map to categories
+    const neededCategories = new Set();
+    factors.forEach(f => {
+      if (f.impact === 'negative' && categoryMapping[f.name]) {
+        categoryMapping[f.name].forEach(cat => neededCategories.add(cat));
+      }
+    });
+
+    // If in red zone, always include stress resources
+    if (zone === 'red') {
+      neededCategories.add('stress');
+      neededCategories.add('mindfulness');
+    }
+
+    // Default categories if none identified
+    if (neededCategories.size === 0) {
+      neededCategories.add('mindfulness');
+      neededCategories.add('productivity');
+    }
+
+    // Fetch matching resources
+    const resourcesResult = await db.query(`
+      SELECT id, title, description, content_type, category, duration_minutes, difficulty
+      FROM wellness_resources
+      WHERE category = ANY($1) AND is_active = true
+      ORDER BY
+        CASE WHEN category = 'stress' THEN 0 ELSE 1 END,
+        view_count DESC NULLS LAST
+      LIMIT 6
+    `, [Array.from(neededCategories)]);
+
+    const recommendations = resourcesResult.rows.map(r => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      contentType: r.content_type,
+      category: r.category,
+      durationMinutes: r.duration_minutes,
+      difficulty: r.difficulty,
+      reason: getRecommendationReason(r.category, zone, factors),
+    }));
+
+    res.json({
+      zone,
+      burnoutScore: parseFloat(burnout_score),
+      targetedCategories: Array.from(neededCategories),
+      recommendations,
+    });
+  } catch (err) {
+    console.error('Get recommended resources error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to get recommendations' });
+  }
+});
+
+function getRecommendationReason(category, zone, factors) {
+  const reasons = {
+    stress: zone === 'red'
+      ? 'Recommended to help manage your elevated stress levels'
+      : 'Good for maintaining low stress',
+    sleep: 'Can help improve your sleep quality',
+    mindfulness: 'Helps with mental clarity and stress reduction',
+    exercise: 'Physical activity can boost energy and mood',
+    productivity: 'Tips to work smarter, not harder',
+    nutrition: 'Fuel your body for better performance',
+  };
+  return reasons[category] || 'Recommended for your wellness';
+}
+
 module.exports = router;

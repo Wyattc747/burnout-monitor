@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
-import { LayoutDashboard, Heart, User, Palette, Link2, Settings, X, Menu, LogOut } from 'lucide-react';
+import { LayoutDashboard, Heart, User, Palette, Settings, X, Menu, LogOut, TrendingUp, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { Avatar } from './Avatar';
 import { ThemeToggle } from './ThemeToggle';
@@ -42,10 +42,11 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    ...(isManager ? [] : [{ href: '/dashboard/insights', label: 'Insights', icon: TrendingUp }]),
+    ...(isManager ? [] : [{ href: '/dashboard/metrics', label: 'Metrics', icon: BarChart3 }]),
     { href: '/wellness', label: 'Wellness', icon: Heart },
     ...(isManager ? [] : [{ href: '/profile', label: 'My Profile', icon: User }]),
     ...(isManager ? [] : [{ href: '/settings/personalization', label: 'Personalization', icon: Palette }]),
-    ...(isManager ? [] : [{ href: '/onboarding', label: 'Connections', icon: Link2 }]),
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 

@@ -9,9 +9,11 @@ import { AlertCard } from '@/components/AlertCard';
 import { DemoControls } from '@/components/DemoControls';
 import { UpcomingMeetings } from '@/components/UpcomingMeetings';
 import { TeamManagement } from '@/components/TeamManagement';
-import { TeamAggregatesCard, TeamHeatmap } from '@/components/TeamHeatmap';
+import { TeamHeatmap } from '@/components/TeamHeatmap';
 import { MeetingSuggestions } from '@/components/MeetingSuggestions';
+import { TeamWellnessInsights } from '@/components/TeamWellnessInsights';
 import { clsx } from 'clsx';
+import type { Employee } from '@/types';
 
 export function ManagerDashboard() {
   const router = useRouter();
@@ -40,9 +42,9 @@ export function ManagerDashboard() {
 
   // Group employees by zone for summary
   const zoneCounts = {
-    red: employees?.filter((e) => e.zone === 'red').length || 0,
-    yellow: employees?.filter((e) => e.zone === 'yellow').length || 0,
-    green: employees?.filter((e) => e.zone === 'green').length || 0,
+    red: employees?.filter((e: Employee) => e.zone === 'red').length || 0,
+    yellow: employees?.filter((e: Employee) => e.zone === 'yellow').length || 0,
+    green: employees?.filter((e: Employee) => e.zone === 'green').length || 0,
   };
 
   return (
@@ -75,8 +77,8 @@ export function ManagerDashboard() {
         />
       </div>
 
-      {/* Team Aggregates */}
-      <TeamAggregatesCard />
+      {/* Team Wellness Insights - Combined wellness overview and patterns */}
+      <TeamWellnessInsights />
 
       {/* Team Members and Alerts */}
       <div className="grid lg:grid-cols-3 gap-8">
@@ -99,7 +101,7 @@ export function ManagerDashboard() {
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 gap-4">
-              {employees?.map((employee) => (
+              {employees?.map((employee: Employee) => (
                 <EmployeeCard
                   key={employee.id}
                   employee={employee}

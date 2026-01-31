@@ -14,13 +14,13 @@ interface ExplainabilityPanelProps {
 
 function FactorItem({ factor }: { factor: Factor }) {
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
+    <div className="flex items-start gap-3 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
       <div
         className={clsx(
           'mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs',
-          factor.impact === 'positive' && 'bg-green-100 text-green-600',
-          factor.impact === 'negative' && 'bg-red-100 text-red-600',
-          factor.impact === 'neutral' && 'bg-gray-100 text-gray-600'
+          factor.impact === 'positive' && 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+          factor.impact === 'negative' && 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
+          factor.impact === 'neutral' && 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
         )}
       >
         {factor.impact === 'positive' && '↑'}
@@ -29,19 +29,19 @@ function FactorItem({ factor }: { factor: Factor }) {
       </div>
       <div className="flex-1">
         <div className="flex items-center justify-between mb-1">
-          <span className="font-medium text-gray-900">{factor.name}</span>
+          <span className="font-medium text-gray-900 dark:text-white">{factor.name}</span>
           <span
             className={clsx(
               'text-sm font-medium',
-              factor.impact === 'positive' && 'text-green-600',
-              factor.impact === 'negative' && 'text-red-600',
-              factor.impact === 'neutral' && 'text-gray-600'
+              factor.impact === 'positive' && 'text-green-600 dark:text-green-400',
+              factor.impact === 'negative' && 'text-red-600 dark:text-red-400',
+              factor.impact === 'neutral' && 'text-gray-600 dark:text-gray-400'
             )}
           >
             {factor.value}
           </span>
         </div>
-        <p className="text-sm text-gray-600">{factor.description}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">{factor.description}</p>
       </div>
     </div>
   );
@@ -129,7 +129,7 @@ export function ExplainabilityPanel({ employeeId, viewerRole }: ExplainabilityPa
   return (
     <div className="card">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           {isViewingOwnData ? 'Why am I in this zone?' : 'Zone Analysis'}
         </h3>
         <ZoneBadge zone={explanation.zone} />
@@ -151,12 +151,103 @@ export function ExplainabilityPanel({ employeeId, viewerRole }: ExplainabilityPa
         </div>
       </div>
 
+      {/* Interaction Effects - Show compound stress factors */}
+      {explanation.context?.interactionEffects && explanation.context.interactionEffects.length > 0 && (
+        <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+          <h4 className="text-sm font-semibold text-orange-800 dark:text-orange-200 mb-2 flex items-center gap-2">
+            <span className="text-base">⚡</span>
+            Compound Stress Factors
+          </h4>
+          <p className="text-xs text-orange-600 dark:text-orange-300 mb-3">
+            When multiple factors are elevated, they amplify each other's impact
+          </p>
+          <div className="space-y-2">
+            {explanation.context.interactionEffects.map((effect: { name: string; severity: string; description: string }, index: number) => (
+              <div
+                key={index}
+                className={clsx(
+                  'flex items-center gap-2 text-sm p-2 rounded',
+                  effect.severity === 'critical' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                )}
+              >
+                <span className={clsx(
+                  'text-xs font-medium px-1.5 py-0.5 rounded',
+                  effect.severity === 'critical' ? 'bg-red-200 dark:bg-red-800' : 'bg-orange-200 dark:bg-orange-800'
+                )}>
+                  {effect.severity === 'critical' ? 'CRITICAL' : 'ELEVATED'}
+                </span>
+                <span>{effect.description}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Vacation/Rest Alert */}
+      {explanation.context?.vacationAlert && (
+        <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+          <div className="flex items-start gap-2">
+            <span className="text-purple-600 dark:text-purple-400 text-lg">🏝️</span>
+            <div>
+              <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200">Rest Needed</h4>
+              <p className="text-sm text-purple-600 dark:text-purple-300 mt-1">
+                {explanation.context.vacationAlert.message}
+              </p>
+              <p className="text-xs text-purple-500 dark:text-purple-400 mt-1">
+                {explanation.context.vacationAlert.daysSinceRest} days since last good recovery day
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Calibration Info */}
+      {explanation.context?.calibrationInfo?.applied && (
+        <div className="mb-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-blue-600 dark:text-blue-400">🎯</span>
+            <span className="text-blue-700 dark:text-blue-300">
+              {explanation.context.calibrationInfo.message}
+              <span className="ml-1 text-xs text-blue-500">
+                ({explanation.context.calibrationInfo.discrepancy > 0 ? '+' : ''}{explanation.context.calibrationInfo.discrepancy} pts)
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Active Life Events */}
+      {explanation.context?.activeLifeEvents && explanation.context.activeLifeEvents.length > 0 && (
+        <div className="mb-6 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg">
+          <h4 className="text-sm font-semibold text-indigo-800 dark:text-indigo-200 mb-2 flex items-center gap-2">
+            <span className="text-base">📅</span>
+            Active Life Events
+          </h4>
+          <div className="space-y-1">
+            {explanation.context.activeLifeEvents.map((event: { label: string; impact: string }, index: number) => (
+              <div key={index} className="flex items-center justify-between text-sm">
+                <span className="text-indigo-700 dark:text-indigo-300">{event.label}</span>
+                <span className="text-xs text-indigo-500 dark:text-indigo-400">{event.impact}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Day Context */}
+      {explanation.context?.dayContext && (
+        <div className="mb-4 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+          <span>📆</span>
+          <span>{explanation.context.dayContext.label}: {explanation.context.dayContext.message}</span>
+        </div>
+      )}
+
       {/* Factors */}
       <div className="mb-6">
-        <h4 className="text-sm font-semibold text-gray-700 mb-2">
+        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
           Contributing Factors
         </h4>
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100 dark:divide-gray-700">
           {explanation.factors.map((factor, index) => (
             <FactorItem key={index} factor={factor} />
           ))}

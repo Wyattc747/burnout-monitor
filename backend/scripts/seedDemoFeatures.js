@@ -246,14 +246,19 @@ async function seedDemoFeatures() {
       { title: 'Managing Work Stress', desc: 'Strategies for handling workplace stress effectively', type: 'article', cat: 'stress', dur: 10, diff: 'intermediate', content: 'Workplace stress management:\n\n1. Identify your stress triggers\n2. Set boundaries between work and personal life\n3. Break large projects into smaller tasks\n4. Communicate openly with your manager\n5. Take regular breaks during the day' },
     ];
 
+    let insertedCount = 0;
     for (const r of resources) {
-      await db.query(`
-        INSERT INTO wellness_resources (title, description, content_type, category, content, duration_minutes, difficulty, tags, is_active)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
-        ON CONFLICT DO NOTHING
-      `, [r.title, r.desc, r.type, r.cat, r.content, r.dur, r.diff, []]);
+      // Check if resource with this title already exists
+      const existing = await db.query('SELECT id FROM wellness_resources WHERE title = $1', [r.title]);
+      if (existing.rows.length === 0) {
+        await db.query(`
+          INSERT INTO wellness_resources (title, description, content_type, category, content, duration_minutes, difficulty, tags, is_active)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+        `, [r.title, r.desc, r.type, r.cat, r.content, r.dur, r.diff, []]);
+        insertedCount++;
+      }
     }
-    console.log(`  ✓ ${resources.length} wellness resources seeded`);
+    console.log(`  ✓ ${insertedCount} new wellness resources seeded (${resources.length - insertedCount} already existed)`);
 
     console.log('\n✅ Demo feature data seeded successfully!');
     process.exit(0);
