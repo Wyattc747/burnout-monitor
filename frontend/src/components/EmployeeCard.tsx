@@ -7,10 +7,63 @@ import type { Employee } from '@/types';
 interface EmployeeCardProps {
   employee: Employee;
   onClick?: () => void;
+  compact?: boolean;
 }
 
-export function EmployeeCard({ employee, onClick }: EmployeeCardProps) {
+export function EmployeeCard({ employee, onClick, compact = false }: EmployeeCardProps) {
   const initials = `${employee.firstName[0]}${employee.lastName[0]}`;
+
+  if (compact) {
+    return (
+      <div
+        onClick={onClick}
+        className={clsx(
+          'p-3 rounded-lg border cursor-pointer hover:shadow-md transition-all',
+          'bg-white dark:bg-gray-800',
+          employee.zone === 'red' && 'border-red-200 dark:border-red-800 hover:border-red-300',
+          employee.zone === 'yellow' && 'border-amber-200 dark:border-amber-800 hover:border-amber-300',
+          employee.zone === 'green' && 'border-emerald-200 dark:border-emerald-800 hover:border-emerald-300',
+          !employee.zone && 'border-gray-200 dark:border-gray-700'
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={clsx(
+              'w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0',
+              employee.zone === 'red' && 'bg-red-500',
+              employee.zone === 'yellow' && 'bg-amber-500',
+              employee.zone === 'green' && 'bg-emerald-500',
+              !employee.zone && 'bg-gray-400'
+            )}
+          >
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                {employee.firstName} {employee.lastName}
+              </h3>
+              <ZoneIndicator zone={employee.zone} size="sm" />
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {employee.jobTitle}
+            </p>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className={clsx(
+              'text-lg font-bold',
+              employee.zone === 'red' && 'text-red-600 dark:text-red-400',
+              employee.zone === 'yellow' && 'text-amber-600 dark:text-amber-400',
+              employee.zone === 'green' && 'text-emerald-600 dark:text-emerald-400'
+            )}>
+              {employee.burnoutScore ?? '-'}
+            </p>
+            <p className="text-xs text-gray-400">risk</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

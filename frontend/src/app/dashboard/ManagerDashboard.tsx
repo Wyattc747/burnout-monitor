@@ -1,36 +1,36 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { teamsApi, alertsApi } from '@/lib/api';
 import { EmployeeCard } from '@/components/EmployeeCard';
 import { AlertCard } from '@/components/AlertCard';
 import { DemoControls } from '@/components/DemoControls';
-import { UpcomingMeetings } from '@/components/UpcomingMeetings';
-import { TeamManagement } from '@/components/TeamManagement';
-import { TeamHeatmap } from '@/components/TeamHeatmap';
-import { MeetingSuggestions } from '@/components/MeetingSuggestions';
-import { TeamWellnessInsights } from '@/components/TeamWellnessInsights';
 import { clsx } from 'clsx';
 import type { Employee } from '@/types';
+import {
+  Users,
+  BarChart3,
+  Calendar,
+  ChevronRight,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+} from 'lucide-react';
 
 export function ManagerDashboard() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [alertFilter, setAlertFilter] = useState<'all' | 'unacknowledged'>('unacknowledged');
 
   const { data: employees, isLoading: loadingEmployees } = useQuery({
     queryKey: ['team-members'],
     queryFn: teamsApi.getMembers,
   });
 
-  const { data: alerts, isLoading: loadingAlerts } = useQuery({
-    queryKey: ['alerts', alertFilter],
-    queryFn: () =>
-      alertsApi.getAll({
-        acknowledged: alertFilter === 'unacknowledged' ? false : undefined,
-      }),
+  const { data: alerts } = useQuery({
+    queryKey: ['alerts', 'unacknowledged'],
+    queryFn: () => alertsApi.getAll({ acknowledged: false }),
   });
 
   const acknowledgeAlert = useMutation({
@@ -40,130 +40,216 @@ export function ManagerDashboard() {
     },
   });
 
-  // Group employees by zone for summary
+  // Calculate team stats
   const zoneCounts = {
     red: employees?.filter((e: Employee) => e.zone === 'red').length || 0,
     yellow: employees?.filter((e: Employee) => e.zone === 'yellow').length || 0,
     green: employees?.filter((e: Employee) => e.zone === 'green').length || 0,
   };
+  const totalEmployees = employees?.length || 0;
+  const unacknowledgedAlerts = alerts?.filter((a: any) => !a.isAcknowledged) || [];
+
+  // Get employees needing attention (red zone)
+  const employeesNeedingAttention = employees?.filter((e: Employee) => e.zone === 'red') || [];
+
+  // Calculate team health score (weighted: green=100, yellow=60, red=20)
+  const teamHealthScore = totalEmployees > 0
+    ? Math.round((zoneCounts.green * 100 + zoneCounts.yellow * 60 + zoneCounts.red * 20) / totalEmployees)
+    : 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Team Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400">Monitor employee wellness and performance</p>
+        <p className="text-gray-600 dark:text-gray-400">
+          Overview of your team's wellness and performance
+        </p>
       </div>
 
-      {/* Zone Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Top Stats Row */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <TeamHealthCard score={teamHealthScore} trend={5} />
         <ZoneSummaryCard
           zone="red"
           count={zoneCounts.red}
           label="Burnout Risk"
-          total={employees?.length || 0}
+          total={totalEmployees}
         />
         <ZoneSummaryCard
           zone="yellow"
           count={zoneCounts.yellow}
           label="Moderate"
-          total={employees?.length || 0}
+          total={totalEmployees}
         />
         <ZoneSummaryCard
           zone="green"
           count={zoneCounts.green}
           label="Peak Ready"
-          total={employees?.length || 0}
+          total={totalEmployees}
         />
       </div>
 
-      {/* Team Wellness Insights - Combined wellness overview and patterns */}
-      <TeamWellnessInsights />
-
-      {/* Team Members and Alerts */}
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Employee Cards */}
-        <div className="lg:col-span-2 space-y-4">
-          <h2 className="section-header">Team Members</h2>
-          {loadingEmployees ? (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="card animate-pulse">
-                  <div className="flex gap-4">
-                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full" />
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-2" />
-                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
-                    </div>
-                  </div>
-                </div>
-              ))}
+      {/* Priority Alerts */}
+      {unacknowledgedAlerts.length > 0 && (
+        <div className="card border-l-4 border-red-500">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              <h2 className="font-semibold text-gray-900 dark:text-white">
+                Priority Alerts ({unacknowledgedAlerts.length})
+              </h2>
             </div>
-          ) : (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {employees?.map((employee: Employee) => (
-                <EmployeeCard
-                  key={employee.id}
-                  employee={employee}
-                  onClick={() => router.push(`/dashboard/employee/${employee.id}`)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Alerts Panel */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="section-header">Alerts</h2>
-            <select
-              value={alertFilter}
-              onChange={(e) => setAlertFilter(e.target.value as typeof alertFilter)}
-              className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+            <Link
+              href="/dashboard/alerts"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
             >
-              <option value="unacknowledged">Unacknowledged</option>
-              <option value="all">All</option>
-            </select>
+              View All <ChevronRight className="w-4 h-4" />
+            </Link>
           </div>
-
-          <div className="space-y-3 max-h-[500px] overflow-y-auto">
-            {loadingAlerts ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="skeleton h-24 rounded-lg" />
-                ))}
-              </div>
-            ) : alerts?.length === 0 ? (
-              <div className="card text-center text-gray-500 dark:text-gray-400 py-8">
-                <p>No alerts to show</p>
-              </div>
-            ) : (
-              alerts?.map((alert) => (
-                <AlertCard
-                  key={alert.id}
-                  alert={alert}
-                  onAcknowledge={(id) => acknowledgeAlert.mutate(id)}
-                />
-              ))
-            )}
+          <div className="space-y-3">
+            {unacknowledgedAlerts.slice(0, 3).map((alert: any) => (
+              <AlertCard
+                key={alert.id}
+                alert={alert}
+                onAcknowledge={(id) => acknowledgeAlert.mutate(id)}
+              />
+            ))}
           </div>
         </div>
+      )}
+
+      {/* Employees Needing Attention */}
+      {employeesNeedingAttention.length > 0 && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-semibold text-gray-900 dark:text-white">
+                Needs Attention
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Team members in the burnout risk zone
+              </p>
+            </div>
+            <Link
+              href="/dashboard/team?filter=red"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+            >
+              View All <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {employeesNeedingAttention.slice(0, 3).map((employee: Employee) => (
+              <EmployeeCard
+                key={employee.id}
+                employee={employee}
+                onClick={() => router.push(`/dashboard/employee/${employee.id}`)}
+                compact
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Navigation Cards */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        <NavigationCard
+          href="/dashboard/team"
+          icon={<Users className="w-6 h-6" />}
+          title="Team Members"
+          description={`${totalEmployees} employees`}
+          color="blue"
+        />
+        <NavigationCard
+          href="/dashboard/analytics"
+          icon={<BarChart3 className="w-6 h-6" />}
+          title="Analytics"
+          description="Trends & insights"
+          color="purple"
+        />
+        <NavigationCard
+          href="/dashboard/meetings"
+          icon={<Calendar className="w-6 h-6" />}
+          title="Meetings"
+          description="1:1 scheduling"
+          color="green"
+        />
       </div>
 
-      {/* Your Upcoming Meetings */}
-      <UpcomingMeetings />
-
-      {/* 1:1 Meeting Suggestions & Team Heatmap */}
-      <div className="grid lg:grid-cols-2 gap-8">
-        <MeetingSuggestions />
-        <TeamHeatmap />
+      {/* Quick Team Overview */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Team Overview</h2>
+          <Link
+            href="/dashboard/team"
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+          >
+            View All <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+        {loadingEmployees ? (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-20 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {employees?.slice(0, 6).map((employee: Employee) => (
+              <EmployeeCard
+                key={employee.id}
+                employee={employee}
+                onClick={() => router.push(`/dashboard/employee/${employee.id}`)}
+                compact
+              />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Team Management */}
-      <TeamManagement />
 
       {/* Demo Controls */}
       {employees && <DemoControls employees={employees} />}
+    </div>
+  );
+}
+
+function TeamHealthCard({ score, trend }: { score: number; trend: number }) {
+  const getHealthColor = (score: number) => {
+    if (score >= 80) return 'text-emerald-600 dark:text-emerald-400';
+    if (score >= 60) return 'text-amber-600 dark:text-amber-400';
+    return 'text-red-600 dark:text-red-400';
+  };
+
+  const getHealthLabel = (score: number) => {
+    if (score >= 80) return 'Excellent';
+    if (score >= 60) return 'Good';
+    if (score >= 40) return 'Fair';
+    return 'Needs Attention';
+  };
+
+  return (
+    <div className="card bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-800">
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Team Health</p>
+      <div className="flex items-baseline gap-2">
+        <span className={clsx('text-3xl font-bold', getHealthColor(score))}>
+          {score}
+        </span>
+        <span className="text-gray-400">/100</span>
+      </div>
+      <div className="flex items-center gap-2 mt-1">
+        <span className={clsx('text-sm font-medium', getHealthColor(score))}>
+          {getHealthLabel(score)}
+        </span>
+        {trend !== 0 && (
+          <span className={clsx(
+            'text-xs flex items-center gap-0.5',
+            trend > 0 ? 'text-emerald-600' : 'text-red-600'
+          )}>
+            {trend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            {Math.abs(trend)}%
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -181,31 +267,83 @@ function ZoneSummaryCard({
 }) {
   const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
 
+  const zoneConfig = {
+    red: {
+      bg: 'bg-red-50 dark:bg-red-900/20',
+      border: 'border-red-200 dark:border-red-800',
+      text: 'text-red-700 dark:text-red-300',
+      badge: 'bg-red-500',
+    },
+    yellow: {
+      bg: 'bg-amber-50 dark:bg-amber-900/20',
+      border: 'border-amber-200 dark:border-amber-800',
+      text: 'text-amber-700 dark:text-amber-300',
+      badge: 'bg-amber-500',
+    },
+    green: {
+      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+      border: 'border-emerald-200 dark:border-emerald-800',
+      text: 'text-emerald-700 dark:text-emerald-300',
+      badge: 'bg-emerald-500',
+    },
+  };
+
+  const config = zoneConfig[zone];
+
   return (
-    <div
-      className={clsx(
-        'card',
-        zone === 'red' && 'border-l-4 border-red-500',
-        zone === 'yellow' && 'border-l-4 border-yellow-500',
-        zone === 'green' && 'border-l-4 border-green-500'
-      )}
-    >
+    <div className={clsx('card border', config.bg, config.border)}>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{label}</p>
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{label}</p>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white">{count}</p>
-        </div>
-        <div
-          className={clsx(
-            'w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold',
-            zone === 'red' && 'bg-red-500',
-            zone === 'yellow' && 'bg-yellow-500',
-            zone === 'green' && 'bg-green-500'
-          )}
-        >
+        <span className={clsx('text-3xl font-bold', config.text)}>{count}</span>
+        <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold', config.badge)}>
           {percentage}%
         </div>
       </div>
     </div>
+  );
+}
+
+function NavigationCard({
+  href,
+  icon,
+  title,
+  description,
+  color,
+  badge,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  color: 'blue' | 'purple' | 'red' | 'green';
+  badge?: number;
+}) {
+  const colorClasses = {
+    blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
+    purple: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
+    red: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
+    green: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400',
+  };
+
+  return (
+    <Link
+      href={href}
+      className="card hover:shadow-lg transition-all duration-200 group border border-transparent hover:border-gray-200 dark:hover:border-gray-700 relative"
+    >
+      {badge !== undefined && badge > 0 && (
+        <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
+      <div className={clsx('p-3 rounded-lg w-fit mb-3', colorClasses[color])}>
+        {icon}
+      </div>
+      <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+        {title}
+      </h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        {description}
+      </p>
+    </Link>
   );
 }

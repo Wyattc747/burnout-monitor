@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { clsx } from 'clsx';
-import { LayoutDashboard, Heart, Settings, ChevronDown, TrendingUp, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Heart, Settings, ChevronDown, TrendingUp, BarChart3, Users, Calendar } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { alertsApi } from '@/lib/api';
 import { Avatar } from './Avatar';
@@ -56,7 +56,7 @@ export function Navbar() {
                 <NavLink href="/dashboard" active={pathname === '/dashboard'} icon={<LayoutDashboard className="w-4 h-4" />}>
                   Dashboard
                 </NavLink>
-                {!isManager && (
+                {!isManager ? (
                   <>
                     <NavLink href="/dashboard/insights" active={pathname === '/dashboard/insights'} icon={<TrendingUp className="w-4 h-4" />}>
                       Insights
@@ -65,10 +65,24 @@ export function Navbar() {
                       Metrics
                     </NavLink>
                   </>
+                ) : (
+                  <>
+                    <NavLink href="/dashboard/team" active={pathname === '/dashboard/team'} icon={<Users className="w-4 h-4" />}>
+                      Team
+                    </NavLink>
+                    <NavLink href="/dashboard/analytics" active={pathname === '/dashboard/analytics'} icon={<BarChart3 className="w-4 h-4" />}>
+                      Analytics
+                    </NavLink>
+                    <NavLink href="/dashboard/meetings" active={pathname === '/dashboard/meetings'} icon={<Calendar className="w-4 h-4" />}>
+                      Meetings
+                    </NavLink>
+                  </>
                 )}
-                <NavLink href="/wellness" active={pathname === '/wellness'} icon={<Heart className="w-4 h-4" />}>
-                  Wellness
-                </NavLink>
+                {!isManager && (
+                  <NavLink href="/wellness" active={pathname === '/wellness'} icon={<Heart className="w-4 h-4" />}>
+                    Wellness
+                  </NavLink>
+                )}
                 <NavLink href="/settings" active={pathname === '/settings'} icon={<Settings className="w-4 h-4" />}>
                   Settings
                 </NavLink>
@@ -77,10 +91,12 @@ export function Navbar() {
 
             {/* Right side */}
             <div className="flex items-center gap-2 sm:gap-4">
-              {/* Data Freshness Indicator */}
-              <div className="hidden sm:block">
-                <DataFreshnessIndicator />
-              </div>
+              {/* Data Freshness Indicator - Only for employees */}
+              {!isManager && (
+                <div className="hidden sm:block">
+                  <DataFreshnessIndicator />
+                </div>
+              )}
 
               {/* Alert Badge */}
               {unacknowledgedCount > 0 && (

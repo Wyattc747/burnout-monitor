@@ -66,22 +66,27 @@ const STATUS_STYLES = {
 
 async function fetchDataSources(): Promise<DataSource[]> {
   const token = localStorage.getItem('token');
+  const employeeId = localStorage.getItem('employeeId');
+
+  if (!token || !employeeId) {
+    return [];
+  }
 
   // Get integration status
   const intRes = await fetch('http://localhost:3001/api/integrations/status', {
     headers: { Authorization: `Bearer ${token}` },
-  });
+  }).catch(() => null);
 
-  // Get latest health and work metrics timestamps
-  const healthRes = await fetch('http://localhost:3001/api/employees/me/health?limit=1', {
+  // Get latest health and work metrics timestamps using the employee ID
+  const healthRes = await fetch(`http://localhost:3001/api/employees/${employeeId}/health?limit=1`, {
     headers: { Authorization: `Bearer ${token}` },
   }).catch(() => null);
 
-  const workRes = await fetch('http://localhost:3001/api/employees/me/work?limit=1', {
+  const workRes = await fetch(`http://localhost:3001/api/employees/${employeeId}/work?limit=1`, {
     headers: { Authorization: `Bearer ${token}` },
   }).catch(() => null);
 
-  const integrations = intRes.ok ? await intRes.json() : {};
+  const integrations = intRes?.ok ? await intRes.json() : {};
   const health = healthRes?.ok ? await healthRes.json() : [];
   const work = workRes?.ok ? await workRes.json() : [];
 
