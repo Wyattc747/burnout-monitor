@@ -1,3 +1,4 @@
+
 /**
  * Database Seed Script
  * Populates the database with demo users and synthetic data

@@ -64,11 +64,11 @@ export function MeetingSuggestions() {
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm animate-pulse">
-        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm animate-pulse">
+        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-3"></div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
           ))}
         </div>
       </div>
@@ -77,33 +77,25 @@ export function MeetingSuggestions() {
 
   if (suggestions.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">1:1 Meeting Suggestions</h2>
-        <div className="text-center py-8">
-          <svg className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <p className="text-gray-500 dark:text-gray-400">No meeting suggestions at this time.</p>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-            We'll suggest meetings when team members may benefit from a check-in.
-          </p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">1:1 Meeting Suggestions</h2>
+        <div className="text-center py-4">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">No meeting suggestions at this time.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">1:1 Meeting Suggestions</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {suggestions.length} suggested meeting{suggestions.length !== 1 ? 's' : ''}
-          </p>
-        </div>
+    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">1:1 Meeting Suggestions</h2>
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          {suggestions.length} suggested
+        </span>
       </div>
 
-      <div className="space-y-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {suggestions.map((suggestion) => {
           const urgencyStyle = URGENCY_STYLES[suggestion.urgency];
           const zoneColor = suggestion.zone === 'red' ? 'bg-red-500' :
@@ -111,32 +103,25 @@ export function MeetingSuggestions() {
           return (
             <div
               key={suggestion.employeeId}
-              className="flex items-start gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+              className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
             >
               <Avatar
                 name={suggestion.employeeName}
-                size="md"
+                size="sm"
               />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-medium text-gray-900 dark:text-white">
+                <div className="flex items-center gap-1.5">
+                  <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">
                     {suggestion.employeeName}
                   </h4>
-                  <span className={`w-2 h-2 rounded-full ${zoneColor}`}></span>
-                  <span className={`px-2 py-0.5 text-xs rounded-full ${urgencyStyle.bg} ${urgencyStyle.text}`}>
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${zoneColor}`}></span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={`px-1.5 py-0.5 text-xs rounded ${urgencyStyle.bg} ${urgencyStyle.text}`}>
                     {suggestion.urgency}
                   </span>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {suggestion.reason}
-                </p>
-
-                <div className="mt-3 flex gap-2">
-                  <button className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
-                    Schedule Meeting
-                  </button>
-                  <button className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-                    Dismiss
+                  <button className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">
+                    Schedule
                   </button>
                 </div>
               </div>

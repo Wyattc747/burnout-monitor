@@ -78,15 +78,7 @@ export function ManagerDashboard() {
       {/* Team Aggregates */}
       <TeamAggregatesCard />
 
-      {/* Your Upcoming Meetings */}
-      <UpcomingMeetings />
-
-      {/* 1:1 Meeting Suggestions */}
-      <MeetingSuggestions />
-
-      {/* Team Heatmap */}
-      <TeamHeatmap />
-
+      {/* Team Members and Alerts */}
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Employee Cards */}
         <div className="lg:col-span-2 space-y-4">
@@ -96,10 +88,10 @@ export function ManagerDashboard() {
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="card animate-pulse">
                   <div className="flex gap-4">
-                    <div className="w-12 h-12 bg-gray-200 rounded-full" />
+                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full" />
                     <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
-                      <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-2" />
+                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
                     </div>
                   </div>
                 </div>
@@ -125,7 +117,7 @@ export function ManagerDashboard() {
             <select
               value={alertFilter}
               onChange={(e) => setAlertFilter(e.target.value as typeof alertFilter)}
-              className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+              className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
             >
               <option value="unacknowledged">Unacknowledged</option>
               <option value="all">All</option>
@@ -155,6 +147,15 @@ export function ManagerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Your Upcoming Meetings */}
+      <UpcomingMeetings />
+
+      {/* 1:1 Meeting Suggestions */}
+      <MeetingSuggestions />
+
+      {/* Team Heatmap */}
+      <TeamHeatmap />
 
       {/* Team Management */}
       <TeamManagement />

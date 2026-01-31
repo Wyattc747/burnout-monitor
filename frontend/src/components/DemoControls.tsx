@@ -42,15 +42,15 @@ export function DemoControls({ employees }: DemoControlsProps) {
   });
 
   return (
-    <div className="card bg-gray-50 dark:bg-gray-800 border-2 border-dashed border-gray-300">
+    <div className="card bg-gray-50 dark:bg-gray-800/50 border-2 border-dashed border-gray-300 dark:border-gray-600">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-lg">🎮</span>
-        <h3 className="font-semibold text-gray-900">Demo Controls</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-white">Demo Controls</h3>
       </div>
 
       {/* Trigger Alert */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Trigger Alert</h4>
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Trigger Alert</h4>
         <div className="flex flex-wrap gap-2">
           <select
             value={selectedEmployee}
@@ -84,7 +84,7 @@ export function DemoControls({ employees }: DemoControlsProps) {
 
       {/* Advance Time */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Time Simulation</h4>
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Time Simulation</h4>
         <div className="flex items-center gap-2">
           <input
             type="range"
@@ -94,7 +94,7 @@ export function DemoControls({ employees }: DemoControlsProps) {
             onChange={(e) => setAdvanceDays(parseInt(e.target.value))}
             className="flex-1"
           />
-          <span className="text-sm text-gray-600 w-16">{advanceDays} day{advanceDays > 1 ? 's' : ''}</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400 w-16">{advanceDays} day{advanceDays > 1 ? 's' : ''}</span>
           <button
             onClick={() => advanceTime.mutate()}
             disabled={advanceTime.isPending}
@@ -107,10 +107,10 @@ export function DemoControls({ employees }: DemoControlsProps) {
 
       {/* Reset */}
       <div>
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Reset Demo</h4>
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Reset Demo</h4>
         {showConfirmReset ? (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Are you sure?</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">Are you sure?</span>
             <button
               onClick={() => resetDemo.mutate()}
               disabled={resetDemo.isPending}

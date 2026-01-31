@@ -130,10 +130,10 @@ export default function SettingsPage() {
   const tabs = [
     { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'notifications', label: 'Notifications', icon: '🔔' },
-    { id: 'privacy', label: 'Privacy', icon: '🔒' },
+    ...(!isManager ? [{ id: 'privacy', label: 'Privacy', icon: '🔒' }] : []),
     { id: 'integrations', label: 'Integrations', icon: '🔗' },
     { id: 'data', label: 'Data', icon: '📊' },
-  ] as const;
+  ] as { id: SettingsTab; label: string; icon: string }[];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -343,8 +343,8 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Privacy Tab */}
-        {activeTab === 'privacy' && (
+        {/* Privacy Tab (Employees only) */}
+        {activeTab === 'privacy' && !isManager && (
           <div className="space-y-6">
             <PrivacySettings />
           </div>
