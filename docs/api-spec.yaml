@@ -1,0 +1,666 @@
+openapi: 3.0.3
+info:
+  title: Burnout Monitor API
+  description: API for employee burnout detection and peak performance identification
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3001/api
+    description: Development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        role:
+          type: string
+          enum: [manager, employee]
+
+    Employee:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        department:
+          type: string
+        jobTitle:
+          type: string
+        zone:
+          type: string
+          enum: [red, yellow, green]
+        burnoutScore:
+          type: number
+        readinessScore:
+          type: number
+
+    HealthMetrics:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        restingHeartRate:
+          type: integer
+        heartRateVariability:
+          type: number
+        sleepHours:
+          type: number
+        sleepQualityScore:
+          type: integer
+        steps:
+          type: integer
+        exerciseMinutes:
+          type: integer
+
+    WorkMetrics:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        hoursWorked:
+          type: number
+        tasksCompleted:
+          type: integer
+        tasksAssigned:
+          type: integer
+        meetingsAttended:
+          type: integer
+        avgResponseTimeMinutes:
+          type: integer
+
+    ZoneStatus:
+      type: object
+      properties:
+        zone:
+          type: string
+          enum: [red, yellow, green]
+        burnoutScore:
+          type: number
+        readinessScore:
+          type: number
+        date:
+          type: string
+          format: date
+
+    Explanation:
+      type: object
+      properties:
+        zone:
+          type: string
+          enum: [red, yellow, green]
+        factors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Factor'
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    Factor:
+      type: object
+      properties:
+        name:
+          type: string
+        impact:
+          type: string
+          enum: [positive, negative, neutral]
+        value:
+          type: string
+        description:
+          type: string
+        weight:
+          type: number
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        employeeName:
+          type: string
+        type:
+          type: string
+          enum: [burnout, opportunity]
+        zone:
+          type: string
+          enum: [red, green]
+        title:
+          type: string
+        message:
+          type: string
+        isAcknowledged:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+        employeeId:
+          type: string
+          format: uuid
+          nullable: true
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ==========================================
+  # Authentication
+  # ==========================================
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login and get JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout (invalidate token)
+      responses:
+        '200':
+          description: Successfully logged out
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh JWT token
+      responses:
+        '200':
+          description: New token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user info
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  # ==========================================
+  # Employees
+  # ==========================================
+  /employees:
+    get:
+      tags: [Employees]
+      summary: List all employees (manager only)
+      description: Returns list of all employees with current zone status
+      responses:
+        '200':
+          description: List of employees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Employee'
+        '403':
+          description: Forbidden - manager role required
+
+  /employees/{id}:
+    get:
+      tags: [Employees]
+      summary: Get employee details
+      description: Manager can view any employee; employee can only view self
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Employee details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Employee'
+        '403':
+          description: Forbidden
+        '404':
+          description: Employee not found
+
+  /employees/{id}/health:
+    get:
+      tags: [Employees]
+      summary: Get employee health metrics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Health metrics array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HealthMetrics'
+
+  /employees/{id}/work:
+    get:
+      tags: [Employees]
+      summary: Get employee work metrics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Work metrics array
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkMetrics'
+
+  /employees/{id}/burnout:
+    get:
+      tags: [Employees]
+      summary: Get employee burnout score history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Burnout score history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current:
+                    $ref: '#/components/schemas/ZoneStatus'
+                  history:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ZoneStatus'
+
+  /employees/{id}/readiness:
+    get:
+      tags: [Employees]
+      summary: Get employee readiness score history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        '200':
+          description: Readiness score history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current:
+                    $ref: '#/components/schemas/ZoneStatus'
+                  history:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ZoneStatus'
+
+  /employees/{id}/explanation:
+    get:
+      tags: [Employees]
+      summary: Get explanation for current zone status
+      description: Returns factors contributing to the employee's current zone
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Zone explanation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Explanation'
+
+  # ==========================================
+  # Alerts
+  # ==========================================
+  /alerts:
+    get:
+      tags: [Alerts]
+      summary: Get alerts
+      description: Manager gets all alerts; employee gets only their own
+      parameters:
+        - name: acknowledged
+          in: query
+          schema:
+            type: boolean
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [burnout, opportunity]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alert'
+
+  /alerts/{id}/acknowledge:
+    put:
+      tags: [Alerts]
+      summary: Acknowledge an alert
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alert acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+
+  # ==========================================
+  # Notifications
+  # ==========================================
+  /notifications/sms/config:
+    get:
+      tags: [Notifications]
+      summary: Get SMS notification preferences
+      responses:
+        '200':
+          description: SMS configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  smsEnabled:
+                    type: boolean
+                  phoneNumber:
+                    type: string
+                  onBurnout:
+                    type: boolean
+                  onOpportunity:
+                    type: boolean
+
+    post:
+      tags: [Notifications]
+      summary: Update SMS notification preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                smsEnabled:
+                  type: boolean
+                phoneNumber:
+                  type: string
+                onBurnout:
+                  type: boolean
+                onOpportunity:
+                  type: boolean
+      responses:
+        '200':
+          description: Configuration updated
+
+  /notifications/sms/logs:
+    get:
+      tags: [Notifications]
+      summary: Get SMS send history
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: SMS logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    phoneNumber:
+                      type: string
+                    messageBody:
+                      type: string
+                    status:
+                      type: string
+                    sentAt:
+                      type: string
+                      format: date-time
+
+  # ==========================================
+  # Demo Mode
+  # ==========================================
+  /demo/trigger-alert:
+    post:
+      tags: [Demo]
+      summary: Force a zone transition for demo
+      description: Manager only - triggers alert for specified employee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - employeeId
+                - targetZone
+              properties:
+                employeeId:
+                  type: string
+                  format: uuid
+                targetZone:
+                  type: string
+                  enum: [red, green]
+      responses:
+        '200':
+          description: Alert triggered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+
+  /demo/advance-time:
+    post:
+      tags: [Demo]
+      summary: Advance simulation time
+      description: Manager only - fast-forward virtual clock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                days:
+                  type: integer
+                  description: Number of days to advance
+                  default: 1
+      responses:
+        '200':
+          description: Time advanced
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  virtualTime:
+                    type: string
+                    format: date-time
+                  alertsGenerated:
+                    type: integer
+
+  /demo/reset:
+    post:
+      tags: [Demo]
+      summary: Reset demo to initial state
+      description: Manager only - restores all data to starting conditions
+      responses:
+        '200':
+          description: Demo reset complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  employeesReset:
+                    type: integer

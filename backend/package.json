@@ -1,0 +1,32 @@
+{
+  "name": "burnout-monitor-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Burnout Monitor",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "seed": "node scripts/seed.js",
+    "migrate": "node scripts/migrate.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^5.0.3",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "googleapis": "^171.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.13",
+    "pg": "^8.11.3",
+    "twilio": "^4.19.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2"
+  }
+}

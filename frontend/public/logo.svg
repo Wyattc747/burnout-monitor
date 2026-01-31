@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60" fill="none">
+  <!-- Three elephants walking together - representing team/herd -->
+
+  <!-- Elephant 1 (front, largest) -->
+  <g transform="translate(60, 5)">
+    <!-- Body -->
+    <ellipse cx="20" cy="28" rx="18" ry="14" fill="#4F46E5"/>
+    <!-- Head -->
+    <circle cx="38" cy="22" r="10" fill="#4F46E5"/>
+    <!-- Ear -->
+    <ellipse cx="42" cy="18" rx="6" ry="8" fill="#6366F1"/>
+    <!-- Trunk -->
+    <path d="M46 26 Q52 32 50 42 Q48 44 46 42 Q44 36 42 30" fill="#4F46E5" stroke="#4F46E5" stroke-width="1"/>
+    <!-- Legs -->
+    <rect x="8" y="38" width="5" height="14" rx="2" fill="#4F46E5"/>
+    <rect x="18" y="38" width="5" height="14" rx="2" fill="#4F46E5"/>
+    <rect x="26" y="38" width="5" height="14" rx="2" fill="#4F46E5"/>
+    <rect x="34" y="36" width="5" height="12" rx="2" fill="#4F46E5"/>
+    <!-- Tail -->
+    <path d="M2 30 Q-2 35 0 40" stroke="#4F46E5" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <!-- Eye -->
+    <circle cx="42" cy="20" r="1.5" fill="white"/>
+    <!-- Tusk -->
+    <path d="M44 28 Q46 32 44 34" stroke="#E5E7EB" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Elephant 2 (middle) -->
+  <g transform="translate(28, 10) scale(0.85)">
+    <!-- Body -->
+    <ellipse cx="20" cy="28" rx="16" ry="12" fill="#6366F1"/>
+    <!-- Head -->
+    <circle cx="36" cy="22" r="9" fill="#6366F1"/>
+    <!-- Ear -->
+    <ellipse cx="40" cy="18" rx="5" ry="7" fill="#818CF8"/>
+    <!-- Trunk -->
+    <path d="M44 26 Q48 30 46 38 Q44 40 42 38 Q40 32 40 28" fill="#6366F1" stroke="#6366F1" stroke-width="1"/>
+    <!-- Legs -->
+    <rect x="8" y="36" width="4" height="12" rx="2" fill="#6366F1"/>
+    <rect x="16" y="36" width="4" height="12" rx="2" fill="#6366F1"/>
+    <rect x="24" y="36" width="4" height="12" rx="2" fill="#6366F1"/>
+    <rect x="32" y="34" width="4" height="10" rx="2" fill="#6366F1"/>
+    <!-- Tail -->
+    <path d="M4 28 Q0 32 2 36" stroke="#6366F1" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <!-- Eye -->
+    <circle cx="40" cy="20" r="1.2" fill="white"/>
+  </g>
+
+  <!-- Elephant 3 (back, smallest) -->
+  <g transform="translate(2, 16) scale(0.7)">
+    <!-- Body -->
+    <ellipse cx="18" cy="26" rx="14" ry="10" fill="#818CF8"/>
+    <!-- Head -->
+    <circle cx="32" cy="20" r="8" fill="#818CF8"/>
+    <!-- Ear -->
+    <ellipse cx="36" cy="16" rx="4" ry="6" fill="#A5B4FC"/>
+    <!-- Trunk -->
+    <path d="M38 24 Q42 28 40 34 Q38 36 36 34 Q35 30 36 26" fill="#818CF8" stroke="#818CF8" stroke-width="1"/>
+    <!-- Legs -->
+    <rect x="8" y="32" width="4" height="10" rx="2" fill="#818CF8"/>
+    <rect x="14" y="32" width="4" height="10" rx="2" fill="#818CF8"/>
+    <rect x="22" y="32" width="4" height="10" rx="2" fill="#818CF8"/>
+    <rect x="28" y="30" width="4" height="8" rx="2" fill="#818CF8"/>
+    <!-- Tail -->
+    <path d="M4 24 Q0 28 2 32" stroke="#818CF8" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <!-- Eye -->
+    <circle cx="36" cy="18" r="1" fill="white"/>
+  </g>
+</svg>
