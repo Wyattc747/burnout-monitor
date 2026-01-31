@@ -10,6 +10,7 @@ import { ExplainabilityPanel } from '@/components/ExplainabilityPanel';
 import { AlertCard } from '@/components/AlertCard';
 import { DualScoreChart, WorkMetricsChart, WorkBreakdownChart } from '@/components/Charts';
 import { SupportBot, SupportBotButton } from '@/components/SupportBot';
+import { CommunicationMetrics, WorkPatterns, WellnessIndicators, WeeklyTrends } from '@/components/EmployeeMetrics';
 import { clsx } from 'clsx';
 
 export default function EmployeeDetailPage() {
@@ -179,6 +180,23 @@ export default function EmployeeDetailPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Enhanced Metrics Section */}
+      <div className="grid lg:grid-cols-2 gap-8">
+        {/* Communication Patterns */}
+        <CommunicationMetrics employeeId={employeeId} />
+
+        {/* Work Patterns */}
+        <WorkPatterns employeeId={employeeId} />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-8">
+        {/* Wellness Indicators (Privacy-respecting) */}
+        <WellnessIndicators employeeId={employeeId} zone={employee.zone} />
+
+        {/* Weekly Summary */}
+        <WeeklyTrends employeeId={employeeId} />
       </div>
 
       {/* Work Metrics - Managers only see work data, not health data */}

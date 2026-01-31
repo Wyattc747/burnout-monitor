@@ -193,8 +193,10 @@ router.get('/:id/work', canAccessEmployee, async (req, res) => {
         meetings_attended,
         meeting_hours,
         emails_sent,
+        emails_received,
         avg_response_time_minutes,
-        focus_time_hours
+        focus_time_hours,
+        context_switches
       FROM work_metrics
       WHERE employee_id = $1
     `;
@@ -227,14 +229,54 @@ router.get('/:id/work', canAccessEmployee, async (req, res) => {
       meetingsAttended: row.meetings_attended,
       meetingHours: row.meeting_hours ? parseFloat(row.meeting_hours) : null,
       emailsSent: row.emails_sent,
+      emailsReceived: row.emails_received,
       avgResponseTimeMinutes: row.avg_response_time_minutes,
       focusTimeHours: row.focus_time_hours ? parseFloat(row.focus_time_hours) : null,
+      contextSwitches: row.context_switches,
     }));
 
     res.json(metrics);
   } catch (err) {
     console.error('Get work metrics error:', err);
     res.status(500).json({ error: 'Server Error', message: 'Failed to get work metrics' });
+  }
+});
+
+// GET /api/employees/:id/email-metrics - Get email metrics (for managers)
+router.get('/:id/email-metrics', canAccessEmployee, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 14 } = req.query;
+
+    const result = await db.query(`
+      SELECT
+        date,
+        emails_received,
+        emails_sent,
+        emails_read,
+        emails_outside_hours,
+        earliest_email_time,
+        latest_email_time
+      FROM email_metrics
+      WHERE employee_id = $1
+      ORDER BY date DESC
+      LIMIT $2
+    `, [id, parseInt(limit)]);
+
+    const metrics = result.rows.map(row => ({
+      date: row.date,
+      emailsReceived: row.emails_received || 0,
+      emailsSent: row.emails_sent || 0,
+      emailsRead: row.emails_read || 0,
+      emailsOutsideHours: row.emails_outside_hours || 0,
+      earliestEmailTime: row.earliest_email_time,
+      latestEmailTime: row.latest_email_time,
+    }));
+
+    res.json(metrics);
+  } catch (err) {
+    console.error('Get email metrics error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to get email metrics' });
   }
 });
 

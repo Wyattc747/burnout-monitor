@@ -42,13 +42,21 @@ async function seed() {
     `, ['manager@demo.com', passwordHash]);
     const managerId = managerResult.rows[0].id;
 
+    // Create manager employee record
+    const managerEmpResult = await db.query(`
+      INSERT INTO employees (user_id, first_name, last_name, email, department, job_title, hire_date)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id
+    `, [managerId, 'Morgan', 'Smith', 'manager@demo.com', 'Engineering', 'Engineering Manager', '2022-03-01']);
+    const managerEmployeeId = managerEmpResult.rows[0].id;
+
     // Set up manager notification preferences
     await db.query(`
       INSERT INTO notification_preferences (user_id, sms_enabled, sms_on_burnout, sms_on_opportunity)
       VALUES ($1, true, true, true)
     `, [managerId]);
 
-    console.log('  Created manager@demo.com');
+    console.log('  Created manager@demo.com (Morgan Smith)');
 
     // Generate all demo data
     console.log('\nGenerating synthetic data for 5 employees...');
@@ -66,12 +74,12 @@ async function seed() {
       `, [profile.email, passwordHash]);
       const userId = userResult.rows[0].id;
 
-      // Create employee record
+      // Create employee record (assign to manager)
       const empResult = await db.query(`
-        INSERT INTO employees (user_id, first_name, last_name, email, department, job_title, hire_date)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO employees (user_id, first_name, last_name, email, department, job_title, hire_date, manager_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id
-      `, [userId, profile.firstName, profile.lastName, profile.email, profile.department, profile.jobTitle, '2023-01-15']);
+      `, [userId, profile.firstName, profile.lastName, profile.email, profile.department, profile.jobTitle, '2023-01-15', managerEmployeeId]);
       const employeeId = empResult.rows[0].id;
 
       console.log(`  Created ${profile.firstName} ${profile.lastName} (${profile.email}) - ${empData.profileKey}`);
