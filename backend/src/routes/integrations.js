@@ -318,13 +318,19 @@ router.get('/gmail/auth', authenticate, (req, res) => {
 // GET /api/integrations/gmail/metrics - Get email metrics
 router.get('/gmail/metrics', authenticate, async (req, res) => {
   try {
-    const isConnected = await gmailService.isGmailConnected(req.user.userId);
-    if (!isConnected) {
-      return res.status(400).json({ error: 'Not Connected', message: 'Gmail is not connected' });
+    const { limit = 30 } = req.query;
+
+    // Always try to get stored metrics from database (includes seeded demo data)
+    const metrics = await gmailService.getEmailMetrics(req.user.employeeId, parseInt(limit));
+
+    // If no metrics found and Gmail not connected, return empty with message
+    if (metrics.length === 0) {
+      const isConnected = await gmailService.isGmailConnected(req.user.userId);
+      if (!isConnected) {
+        return res.status(400).json({ error: 'Not Connected', message: 'Gmail is not connected' });
+      }
     }
 
-    const { limit = 30 } = req.query;
-    const metrics = await gmailService.getEmailMetrics(req.user.employeeId, parseInt(limit));
     res.json(metrics);
   } catch (err) {
     console.error('Gmail metrics error:', err);

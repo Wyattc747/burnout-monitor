@@ -18,7 +18,7 @@ interface WellnessResource {
 }
 
 async function fetchResources(category?: string): Promise<WellnessResource[]> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const url = category
     ? `http://localhost:3001/api/wellness/resources?category=${category}`
     : 'http://localhost:3001/api/wellness/resources';

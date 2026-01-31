@@ -29,7 +29,7 @@ interface PredictiveAlert {
 }
 
 async function fetchPatterns(): Promise<DetectedPattern[]> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/wellness/patterns', {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -38,7 +38,7 @@ async function fetchPatterns(): Promise<DetectedPattern[]> {
 }
 
 async function fetchAlerts(): Promise<PredictiveAlert[]> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/wellness/alerts', {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -47,7 +47,7 @@ async function fetchAlerts(): Promise<PredictiveAlert[]> {
 }
 
 async function acknowledgeAlert(id: string): Promise<void> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch(`http://localhost:3001/api/wellness/alerts/${id}/acknowledge`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
@@ -56,7 +56,7 @@ async function acknowledgeAlert(id: string): Promise<void> {
 }
 
 async function dismissPattern(id: string): Promise<void> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch(`http://localhost:3001/api/wellness/patterns/${id}/dismiss`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },

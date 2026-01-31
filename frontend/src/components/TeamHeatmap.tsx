@@ -2,33 +2,32 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-interface HeatmapEntry {
-  date: string;
-  avgBurnoutScore: number;
-  avgReadinessScore: number;
-  greenCount: number;
-  yellowCount: number;
-  redCount: number;
-  totalEmployees: number;
+interface EmployeeHeatmapData {
+  id: string;
+  name: string;
+  history: {
+    date: string;
+    zone: 'green' | 'yellow' | 'red';
+    burnoutScore: number | null;
+  }[];
 }
 
 interface TeamAggregates {
-  teamSize: number;
   zoneDistribution: {
     green: number;
     yellow: number;
     red: number;
   };
-  avgBurnoutScore: number;
-  avgReadinessScore: number;
-  trends: {
-    burnoutTrend: 'improving' | 'stable' | 'declining';
-    readinessTrend: 'improving' | 'stable' | 'declining';
+  averageScores: {
+    burnout: string | null;
+    readiness: string | null;
   };
+  totalEmployees: number;
+  trend: 'improving' | 'stable' | 'worsening' | 'insufficient_data';
 }
 
-async function fetchTeamHeatmap(): Promise<HeatmapEntry[]> {
-  const token = localStorage.getItem('auth_token');
+async function fetchTeamHeatmap(): Promise<EmployeeHeatmapData[]> {
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/teams/heatmap', {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -37,7 +36,7 @@ async function fetchTeamHeatmap(): Promise<HeatmapEntry[]> {
 }
 
 async function fetchTeamAggregates(): Promise<TeamAggregates> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/teams/aggregates', {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -99,6 +98,10 @@ export function TeamAggregatesCard() {
   const yellowPct = total > 0 ? (aggregates.zoneDistribution.yellow / total) * 100 : 0;
   const redPct = total > 0 ? (aggregates.zoneDistribution.red / total) * 100 : 0;
 
+  // Map API trend values to display values
+  const trendDisplay = aggregates.trend === 'worsening' ? 'declining' :
+                       aggregates.trend === 'insufficient_data' ? 'stable' : aggregates.trend;
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Team Wellness Overview</h2>
@@ -107,7 +110,7 @@ export function TeamAggregatesCard() {
       <div className="mb-6">
         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-2">
           <span>Zone Distribution</span>
-          <span>{aggregates.teamSize} team members</span>
+          <span>{aggregates.totalEmployees} team members</span>
         </div>
         <div className="h-4 rounded-full overflow-hidden flex bg-gray-200 dark:bg-gray-700">
           {greenPct > 0 && (
@@ -153,24 +156,30 @@ export function TeamAggregatesCard() {
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-500 dark:text-gray-400">Avg Readiness</span>
-            {getTrendIcon(aggregates.trends.readinessTrend)}
+            {getTrendIcon(trendDisplay === 'declining' ? 'improving' : trendDisplay)}
           </div>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {aggregates.avgReadinessScore.toFixed(0)}%
+            {aggregates.averageScores.readiness || 'N/A'}%
           </div>
         </div>
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-500 dark:text-gray-400">Avg Burnout Risk</span>
-            {getTrendIcon(aggregates.trends.burnoutTrend === 'improving' ? 'declining' : aggregates.trends.burnoutTrend === 'declining' ? 'improving' : 'stable')}
+            {getTrendIcon(trendDisplay === 'improving' ? 'declining' : trendDisplay === 'declining' ? 'improving' : 'stable')}
           </div>
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {aggregates.avgBurnoutScore.toFixed(0)}%
+            {aggregates.averageScores.burnout || 'N/A'}%
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+function getZoneColor(zone: string): string {
+  if (zone === 'green') return 'bg-emerald-500';
+  if (zone === 'yellow') return 'bg-amber-500';
+  return 'bg-red-500';
 }
 
 export function TeamHeatmap() {
@@ -183,9 +192,16 @@ export function TeamHeatmap() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm animate-pulse">
         <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
-        <div className="grid grid-cols-7 gap-2">
-          {Array.from({ length: 28 }).map((_, i) => (
-            <div key={i} className="h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <div className="w-24 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="flex gap-1 flex-1">
+                {Array.from({ length: 14 }).map((_, j) => (
+                  <div key={j} className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -203,50 +219,80 @@ export function TeamHeatmap() {
     );
   }
 
-  // Group by weeks
-  const weeks: HeatmapEntry[][] = [];
-  let currentWeek: HeatmapEntry[] = [];
-
-  heatmap.slice().reverse().forEach((entry, index) => {
-    currentWeek.push(entry);
-    if (currentWeek.length === 7 || index === heatmap.length - 1) {
-      weeks.push(currentWeek);
-      currentWeek = [];
-    }
+  // Get all unique dates across all employees
+  const allDates = new Set<string>();
+  heatmap.forEach(emp => {
+    emp.history.forEach(h => allDates.add(h.date));
   });
+  const sortedDates = Array.from(allDates).sort().slice(-14); // Last 14 days
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Team Wellness Heatmap</h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Average readiness scores over the past {heatmap.length} days
+        Team member wellness zones over the past {sortedDates.length} days
       </p>
 
-      <div className="space-y-2">
-        {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="flex gap-2">
-            {week.map((day) => (
-              <div
-                key={day.date}
-                className={`w-10 h-10 rounded-lg ${getColorForScore(day.avgReadinessScore)} flex items-center justify-center cursor-pointer transition-transform hover:scale-110`}
-                title={`${new Date(day.date).toLocaleDateString()}: ${day.avgReadinessScore.toFixed(0)}% readiness`}
-              >
-                <span className="text-white text-xs font-medium">{day.avgReadinessScore.toFixed(0)}</span>
+      <div className="overflow-x-auto">
+        <div className="space-y-2 min-w-max">
+          {/* Date headers */}
+          <div className="flex gap-1 items-center">
+            <div className="w-28 text-xs text-gray-400"></div>
+            {sortedDates.map(date => (
+              <div key={date} className="w-6 text-center text-xs text-gray-400" title={date}>
+                {new Date(date).getDate()}
               </div>
             ))}
           </div>
-        ))}
+
+          {/* Employee rows */}
+          {heatmap.map(employee => {
+            const historyByDate = new Map(employee.history.map(h => [h.date, h]));
+
+            return (
+              <div key={employee.id} className="flex gap-1 items-center">
+                <div className="w-28 text-sm text-gray-700 dark:text-gray-300 truncate" title={employee.name}>
+                  {employee.name}
+                </div>
+                {sortedDates.map(date => {
+                  const dayData = historyByDate.get(date);
+                  if (!dayData) {
+                    return (
+                      <div
+                        key={date}
+                        className="w-6 h-6 rounded bg-gray-200 dark:bg-gray-700"
+                        title={`${date}: No data`}
+                      />
+                    );
+                  }
+                  return (
+                    <div
+                      key={date}
+                      className={`w-6 h-6 rounded ${getZoneColor(dayData.zone)} cursor-pointer transition-transform hover:scale-110`}
+                      title={`${new Date(date).toLocaleDateString()}: ${dayData.zone} zone${dayData.burnoutScore ? `, burnout: ${dayData.burnoutScore.toFixed(0)}` : ''}`}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Legend */}
       <div className="flex items-center gap-4 mt-4 text-xs text-gray-500 dark:text-gray-400">
-        <span>Less Ready</span>
-        <div className="flex gap-1">
-          <div className="w-4 h-4 rounded bg-red-500"></div>
-          <div className="w-4 h-4 rounded bg-amber-500"></div>
-          <div className="w-4 h-4 rounded bg-emerald-500"></div>
-        </div>
-        <span>More Ready</span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-emerald-500"></span>
+          Green (Thriving)
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-amber-500"></span>
+          Yellow (At Risk)
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-red-500"></span>
+          Red (Burnout)
+        </span>
       </div>
     </div>
   );

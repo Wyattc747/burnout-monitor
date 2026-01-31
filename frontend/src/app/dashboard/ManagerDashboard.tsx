@@ -8,6 +8,9 @@ import { EmployeeCard } from '@/components/EmployeeCard';
 import { AlertCard } from '@/components/AlertCard';
 import { DemoControls } from '@/components/DemoControls';
 import { UpcomingMeetings } from '@/components/UpcomingMeetings';
+import { TeamManagement } from '@/components/TeamManagement';
+import { TeamAggregatesCard, TeamHeatmap } from '@/components/TeamHeatmap';
+import { MeetingSuggestions } from '@/components/MeetingSuggestions';
 import { clsx } from 'clsx';
 
 export function ManagerDashboard() {
@@ -72,8 +75,17 @@ export function ManagerDashboard() {
         />
       </div>
 
+      {/* Team Aggregates */}
+      <TeamAggregatesCard />
+
       {/* Your Upcoming Meetings */}
       <UpcomingMeetings />
+
+      {/* 1:1 Meeting Suggestions */}
+      <MeetingSuggestions />
+
+      {/* Team Heatmap */}
+      <TeamHeatmap />
 
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Employee Cards */}
@@ -143,6 +155,9 @@ export function ManagerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Team Management */}
+      <TeamManagement />
 
       {/* Demo Controls */}
       {employees && <DemoControls employees={employees} />}

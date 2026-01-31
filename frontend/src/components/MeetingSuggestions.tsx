@@ -4,25 +4,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar } from './Avatar';
 
 interface MeetingSuggestion {
-  id: string;
-  employee: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    zone: 'green' | 'yellow' | 'red';
-  };
-  suggestedReason: string;
+  employeeId: string;
+  employeeName: string;
+  zone: 'green' | 'yellow' | 'red';
   urgency: 'low' | 'normal' | 'high' | 'urgent';
-  suggestedTimes: Array<{
-    start: string;
-    end: string;
-  }> | null;
-  status: 'pending' | 'scheduled' | 'dismissed' | 'completed';
-  createdAt: string;
+  reason: string;
 }
 
 async function fetchMeetingSuggestions(): Promise<MeetingSuggestion[]> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/teams/meeting-suggestions', {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -85,9 +75,7 @@ export function MeetingSuggestions() {
     );
   }
 
-  const pendingSuggestions = suggestions.filter(s => s.status === 'pending');
-
-  if (pendingSuggestions.length === 0) {
+  if (suggestions.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">1:1 Meeting Suggestions</h2>
@@ -110,51 +98,38 @@ export function MeetingSuggestions() {
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">1:1 Meeting Suggestions</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {pendingSuggestions.length} suggested meeting{pendingSuggestions.length !== 1 ? 's' : ''}
+            {suggestions.length} suggested meeting{suggestions.length !== 1 ? 's' : ''}
           </p>
         </div>
       </div>
 
       <div className="space-y-4">
-        {pendingSuggestions.map((suggestion) => {
+        {suggestions.map((suggestion) => {
           const urgencyStyle = URGENCY_STYLES[suggestion.urgency];
+          const zoneColor = suggestion.zone === 'red' ? 'bg-red-500' :
+                            suggestion.zone === 'yellow' ? 'bg-amber-500' : 'bg-emerald-500';
           return (
             <div
-              key={suggestion.id}
+              key={suggestion.employeeId}
               className="flex items-start gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
             >
               <Avatar
-                name={`${suggestion.employee.firstName} ${suggestion.employee.lastName}`}
+                name={suggestion.employeeName}
                 size="md"
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h4 className="font-medium text-gray-900 dark:text-white">
-                    {suggestion.employee.firstName} {suggestion.employee.lastName}
+                    {suggestion.employeeName}
                   </h4>
+                  <span className={`w-2 h-2 rounded-full ${zoneColor}`}></span>
                   <span className={`px-2 py-0.5 text-xs rounded-full ${urgencyStyle.bg} ${urgencyStyle.text}`}>
                     {suggestion.urgency}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {REASON_LABELS[suggestion.suggestedReason] || suggestion.suggestedReason}
+                  {suggestion.reason}
                 </p>
-
-                {suggestion.suggestedTimes && suggestion.suggestedTimes.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Suggested times:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {suggestion.suggestedTimes.slice(0, 3).map((time, i) => (
-                        <button
-                          key={i}
-                          className="px-3 py-1.5 text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
-                        >
-                          {formatTime(time.start)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 <div className="mt-3 flex gap-2">
                   <button className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">

@@ -31,7 +31,7 @@ interface StreakData {
 }
 
 async function fetchStreaks(): Promise<StreakData> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/wellness/streaks', {
     headers: { Authorization: `Bearer ${token}` },
   });

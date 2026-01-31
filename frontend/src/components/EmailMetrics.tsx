@@ -14,7 +14,7 @@ interface EmailMetric {
 }
 
 async function fetchEmailMetrics(): Promise<EmailMetric[]> {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('token');
   const res = await fetch('http://localhost:3001/api/integrations/gmail/metrics?limit=14', {
     headers: { Authorization: `Bearer ${token}` },
   });

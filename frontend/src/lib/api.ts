@@ -354,4 +354,168 @@ export const personalizationApi = {
   },
 };
 
+// Teams API (for managers)
+export const teamsApi = {
+  // Get team members
+  getMembers: async () => {
+    const { data } = await api.get('/teams/members');
+    return data;
+  },
+
+  // Get available employees (not on any team)
+  getAvailable: async () => {
+    const { data } = await api.get('/teams/available');
+    return data;
+  },
+
+  // Add member to team
+  addMember: async (employeeId: string) => {
+    const { data } = await api.post(`/teams/members/${employeeId}`);
+    return data;
+  },
+
+  // Remove member from team
+  removeMember: async (employeeId: string) => {
+    const { data } = await api.delete(`/teams/members/${employeeId}`);
+    return data;
+  },
+
+  // Get team aggregates (anonymous wellness data)
+  getAggregates: async () => {
+    const { data } = await api.get('/teams/aggregates');
+    return data;
+  },
+
+  // Get team heatmap data
+  getHeatmap: async (days = 14) => {
+    const { data } = await api.get('/teams/heatmap', { params: { days } });
+    return data;
+  },
+
+  // Get 1:1 meeting suggestions
+  getMeetingSuggestions: async () => {
+    const { data } = await api.get('/teams/meeting-suggestions');
+    return data;
+  },
+
+  // Invitations
+  getInvitations: async () => {
+    const { data } = await api.get('/teams/invitations');
+    return data;
+  },
+
+  sendInvitation: async (email: string) => {
+    const { data } = await api.post('/teams/invitations', { email });
+    return data;
+  },
+
+  cancelInvitation: async (id: string) => {
+    const { data } = await api.delete(`/teams/invitations/${id}`);
+    return data;
+  },
+};
+
+// Wellness API
+export const wellnessApi = {
+  // Resources
+  getResources: async (params?: { category?: string; contentType?: string; difficulty?: string }) => {
+    const { data } = await api.get('/wellness/resources', { params });
+    return data;
+  },
+
+  getResource: async (id: string) => {
+    const { data } = await api.get(`/wellness/resources/${id}`);
+    return data;
+  },
+
+  // Streaks
+  getStreaks: async () => {
+    const { data } = await api.get('/wellness/streaks');
+    return data;
+  },
+
+  updateStreaks: async () => {
+    const { data } = await api.post('/wellness/streaks/update');
+    return data;
+  },
+
+  // Reminders
+  getReminders: async () => {
+    const { data } = await api.get('/wellness/reminders');
+    return data;
+  },
+
+  updateReminders: async (settings: {
+    checkinReminder?: { enabled?: boolean; time?: string; days?: number[] };
+    weeklySummary?: { enabled?: boolean; day?: number; time?: string };
+    push?: { enabled?: boolean; subscription?: object };
+    emailEnabled?: boolean;
+  }) => {
+    const { data } = await api.put('/wellness/reminders', settings);
+    return data;
+  },
+
+  // Patterns
+  getPatterns: async () => {
+    const { data } = await api.get('/wellness/patterns');
+    return data;
+  },
+
+  acknowledgePattern: async (id: string) => {
+    const { data } = await api.post(`/wellness/patterns/${id}/acknowledge`);
+    return data;
+  },
+
+  dismissPattern: async (id: string) => {
+    const { data } = await api.post(`/wellness/patterns/${id}/dismiss`);
+    return data;
+  },
+
+  // Predictive Alerts
+  getPredictiveAlerts: async () => {
+    const { data } = await api.get('/wellness/alerts');
+    return data;
+  },
+
+  acknowledgePredictiveAlert: async (id: string) => {
+    const { data } = await api.post(`/wellness/alerts/${id}/acknowledge`);
+    return data;
+  },
+
+  // Privacy
+  getPrivacy: async () => {
+    const { data } = await api.get('/wellness/privacy');
+    return data;
+  },
+
+  updatePrivacy: async (settings: {
+    showHealthToManager?: boolean;
+    showSleepToManager?: boolean;
+    showHeartToManager?: boolean;
+    showExerciseToManager?: boolean;
+    showWorkToManager?: boolean;
+    showEmailToManager?: boolean;
+    showCalendarToManager?: boolean;
+    managerViewLevel?: 'full' | 'summary' | 'zone_only';
+    retainDetailedDataDays?: number;
+  }) => {
+    const { data } = await api.put('/wellness/privacy', settings);
+    return data;
+  },
+
+  // Export
+  exportData: async () => {
+    const { data } = await api.get('/wellness/export');
+    return data;
+  },
+};
+
+// Email Metrics API
+export const emailMetricsApi = {
+  getMetrics: async (days = 14) => {
+    const { data } = await api.get('/integrations/gmail/metrics', { params: { days } });
+    return data;
+  },
+};
+
 export default api;

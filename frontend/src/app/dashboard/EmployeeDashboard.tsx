@@ -11,6 +11,10 @@ import { SupportBot, SupportBotButton } from '@/components/SupportBot';
 import { UpcomingMeetings } from '@/components/UpcomingMeetings';
 import { QuickCheckin } from '@/components/FeelingCheckin';
 import { PersonalizationPrompt } from '@/components/PersonalizationPrompt';
+import { WellnessStreaks } from '@/components/WellnessStreaks';
+import { InsightsAndAlerts } from '@/components/InsightsAndAlerts';
+import { EmailMetrics } from '@/components/EmailMetrics';
+import { WellnessResources } from '@/components/WellnessResources';
 import { personalizationApi } from '@/lib/api';
 import { clsx } from 'clsx';
 
@@ -193,10 +197,19 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
         )}
       </div>
 
+      {/* Email Metrics */}
+      <EmailMetrics />
+
+      {/* Wellness Streaks */}
+      <WellnessStreaks />
+
+      {/* Insights & Predictive Alerts */}
+      <InsightsAndAlerts />
+
       {/* Recent Alerts */}
       {alerts && alerts.length > 0 && (
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Recent Alerts
           </h3>
           <div className="space-y-3">
@@ -211,6 +224,9 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
           </div>
         </div>
       )}
+
+      {/* Wellness Resources */}
+      <WellnessResources />
 
       {/* Support Bot */}
       {isBotOpen ? (
