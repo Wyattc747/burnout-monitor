@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { clsx } from 'clsx';
+import { LayoutDashboard, Heart, Settings, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { alertsApi } from '@/lib/api';
 import { Avatar } from './Avatar';
@@ -51,11 +52,14 @@ export function Navbar() {
 
               {/* Desktop Nav Links */}
               <div className="hidden md:flex items-center gap-1 ml-4">
-                <NavLink href="/dashboard" active={pathname === '/dashboard'}>
+                <NavLink href="/dashboard" active={pathname === '/dashboard'} icon={<LayoutDashboard className="w-4 h-4" />}>
                   Dashboard
                 </NavLink>
+                <NavLink href="/wellness" active={pathname === '/wellness'} icon={<Heart className="w-4 h-4" />}>
+                  Wellness
+                </NavLink>
                 {isManager && (
-                  <NavLink href="/settings" active={pathname === '/settings'}>
+                  <NavLink href="/settings" active={pathname === '/settings'} icon={<Settings className="w-4 h-4" />}>
                     Settings
                   </NavLink>
                 )}
@@ -102,19 +106,7 @@ export function Navbar() {
                   <span className="hidden lg:block text-sm text-gray-700 dark:text-gray-300 max-w-[120px] truncate">
                     {displayName}
                   </span>
-                  <svg
-                    className="w-4 h-4 text-gray-500 dark:text-gray-400 hidden sm:block"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
+                  <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 hidden sm:block" />
                 </button>
 
                 {showUserMenu && (
@@ -202,22 +194,25 @@ export function Navbar() {
 function NavLink({
   href,
   active,
+  icon,
   children,
 }: {
   href: string;
   active: boolean;
+  icon?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
       className={clsx(
-        'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+        'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
         active
-          ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shadow-sm'
           : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'
       )}
     >
+      {icon}
       {children}
     </Link>
   );

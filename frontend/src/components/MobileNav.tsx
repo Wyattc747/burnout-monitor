@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
+import { LayoutDashboard, Heart, User, Palette, Link2, Settings, X, Menu, LogOut } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { Avatar } from './Avatar';
 import { ThemeToggle } from './ThemeToggle';
@@ -40,11 +41,12 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
     : user?.email;
 
   const navLinks = [
-    { href: '/dashboard', label: 'Dashboard' },
-    ...(isManager ? [] : [{ href: '/profile', label: 'My Profile' }]),
-    ...(isManager ? [] : [{ href: '/settings/personalization', label: 'Personalization' }]),
-    ...(isManager ? [] : [{ href: '/onboarding', label: 'Connections' }]),
-    { href: '/settings', label: 'Settings' },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/wellness', label: 'Wellness', icon: Heart },
+    ...(isManager ? [] : [{ href: '/profile', label: 'My Profile', icon: User }]),
+    ...(isManager ? [] : [{ href: '/settings/personalization', label: 'Personalization', icon: Palette }]),
+    ...(isManager ? [] : [{ href: '/onboarding', label: 'Connections', icon: Link2 }]),
+    { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
   if (!isOpen) return null;
@@ -72,9 +74,7 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
               className="btn-icon"
               aria-label="Close menu"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-5 h-5" />
             </button>
           </div>
 
@@ -100,21 +100,25 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
           {/* Nav Links */}
           <nav className="flex-1 overflow-y-auto p-4">
             <ul className="space-y-1">
-              {navLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className={clsx(
-                      'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
-                      pathname === link.href
-                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                return (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className={clsx(
+                        'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200',
+                        pathname === link.href
+                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm'
+                          : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                      )}
+                    >
+                      <Icon className="w-5 h-5" />
+                      {link.label}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
 
@@ -131,14 +135,7 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
               }}
               className="w-full btn btn-ghost text-red-600 dark:text-red-400 justify-center"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
+              <LogOut className="w-5 h-5 mr-2" />
               Sign out
             </button>
           </div>
@@ -156,9 +153,7 @@ export function MobileMenuButton({ onClick }: { onClick: () => void }) {
       className="md:hidden btn-icon"
       aria-label="Open menu"
     >
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-      </svg>
+      <Menu className="w-6 h-6" />
     </button>
   );
 }

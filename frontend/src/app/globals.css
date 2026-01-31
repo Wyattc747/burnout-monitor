@@ -107,17 +107,27 @@ html {
 
   /* Cards */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6
+    @apply bg-white rounded-xl shadow-sm border border-gray-200/80 p-6
            transition-all duration-200
-           dark:bg-gray-800 dark:border-gray-700;
+           dark:bg-gray-800 dark:border-gray-700/80;
+  }
+
+  .card-elevated {
+    @apply card shadow-md hover:shadow-lg;
   }
 
   .card-hover {
-    @apply card hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer;
+    @apply card hover:shadow-lg hover:border-gray-300 hover:-translate-y-0.5
+           dark:hover:border-gray-600 cursor-pointer;
   }
 
   .card-interactive {
-    @apply card-hover active:scale-[0.99];
+    @apply card-hover active:scale-[0.99] active:shadow-md;
+  }
+
+  .card-gradient {
+    @apply card bg-gradient-to-br from-white to-gray-50
+           dark:from-gray-800 dark:to-gray-850;
   }
 
   /* Form inputs */
@@ -169,27 +179,31 @@ html {
 
   /* Badge */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide shadow-sm;
   }
 
   .badge-red {
-    @apply badge bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400;
+    @apply badge bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300;
   }
 
   .badge-yellow {
-    @apply badge bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400;
+    @apply badge bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300;
   }
 
   .badge-green {
-    @apply badge bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400;
+    @apply badge bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300;
   }
 
   .badge-blue {
-    @apply badge bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400;
+    @apply badge bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300;
   }
 
   .badge-gray {
     @apply badge bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300;
+  }
+
+  .badge-emerald {
+    @apply badge bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300;
   }
 
   /* Divider */
@@ -210,7 +224,11 @@ html {
 
   /* Section header */
   .section-header {
-    @apply text-lg font-semibold text-gray-900 dark:text-gray-100;
+    @apply text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight;
+  }
+
+  .section-subheader {
+    @apply text-sm font-medium text-gray-500 dark:text-gray-400 tracking-wide uppercase;
   }
 
   /* Dropdown menu */
@@ -246,6 +264,42 @@ html {
 
 .zone-pulse-green {
   animation: pulse-green 2s infinite;
+}
+
+/* Zone gradients */
+.zone-gradient-red {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.zone-gradient-yellow {
+  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+}
+
+.zone-gradient-green {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+}
+
+/* Zone rings for avatars */
+.zone-ring-red {
+  @apply ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-900;
+}
+
+.zone-ring-yellow {
+  @apply ring-2 ring-yellow-500 ring-offset-2 dark:ring-offset-gray-900;
+}
+
+.zone-ring-green {
+  @apply ring-2 ring-green-500 ring-offset-2 dark:ring-offset-gray-900;
+}
+
+/* Subtle background pattern */
+.bg-pattern {
+  background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+.dark .bg-pattern {
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
 }
 
 /* Toast animations */

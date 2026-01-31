@@ -12,22 +12,25 @@ interface ZoneIndicatorProps {
 
 const zoneConfig = {
   red: {
-    bg: 'bg-red-500',
-    text: 'text-red-700',
+    bg: 'zone-gradient-red',
+    text: 'text-red-700 dark:text-red-400',
     label: 'Burnout Risk',
     pulse: 'zone-pulse-red',
+    ring: 'zone-ring-red',
   },
   yellow: {
-    bg: 'bg-yellow-500',
-    text: 'text-yellow-700',
+    bg: 'zone-gradient-yellow',
+    text: 'text-yellow-700 dark:text-yellow-400',
     label: 'Moderate',
     pulse: '',
+    ring: 'zone-ring-yellow',
   },
   green: {
-    bg: 'bg-green-500',
-    text: 'text-green-700',
+    bg: 'zone-gradient-green',
+    text: 'text-green-700 dark:text-green-400',
     label: 'Peak Ready',
     pulse: 'zone-pulse-green',
+    ring: 'zone-ring-green',
   },
 };
 
@@ -71,14 +74,19 @@ export function ZoneBadge({ zone }: { zone: Zone }) {
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
-        zone === 'red' && 'bg-red-100 text-red-800',
-        zone === 'yellow' && 'bg-yellow-100 text-yellow-800',
-        zone === 'green' && 'bg-green-100 text-green-800'
+        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide shadow-sm transition-all duration-200 hover:shadow-md',
+        zone === 'red' && 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+        zone === 'yellow' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+        zone === 'green' && 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
       )}
     >
-      <span className={clsx('w-2 h-2 rounded-full', config.bg)} />
+      <span className={clsx('w-2.5 h-2.5 rounded-full shadow-inner', config.bg)} />
       {config.label}
     </span>
   );
+}
+
+// Export zone ring class getter for use with Avatar
+export function getZoneRingClass(zone: Zone): string {
+  return zoneConfig[zone].ring;
 }

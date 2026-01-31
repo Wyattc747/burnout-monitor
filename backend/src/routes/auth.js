@@ -32,16 +32,14 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
     }
 
-    // Get employee ID if user is an employee
+    // Get employee ID for all users (managers also have employee records)
     let employeeId = null;
-    if (user.role === 'employee') {
-      const empResult = await db.query(
-        'SELECT id FROM employees WHERE user_id = $1',
-        [user.id]
-      );
-      if (empResult.rows.length > 0) {
-        employeeId = empResult.rows[0].id;
-      }
+    const empResult = await db.query(
+      'SELECT id FROM employees WHERE user_id = $1',
+      [user.id]
+    );
+    if (empResult.rows.length > 0) {
+      employeeId = empResult.rows[0].id;
     }
 
     // Generate token

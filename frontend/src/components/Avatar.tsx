@@ -1,17 +1,26 @@
 'use client';
 
 import { clsx } from 'clsx';
+import type { Zone } from '@/types';
 
 interface AvatarProps {
   src?: string | null;
   name?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
+  zone?: Zone;
 }
+
+const zoneRingClasses = {
+  red: 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-gray-900',
+  yellow: 'ring-2 ring-yellow-500 ring-offset-2 dark:ring-offset-gray-900',
+  green: 'ring-2 ring-green-500 ring-offset-2 dark:ring-offset-gray-900',
+};
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-export function Avatar({ src, name = '', size = 'md', className }: AvatarProps) {
+export function Avatar({ src, name = '', size = 'md', className, zone }: AvatarProps) {
+  const zoneRing = zone ? zoneRingClasses[zone] : '';
   const sizeClasses = {
     sm: 'h-8 w-8 text-xs',
     md: 'h-10 w-10 text-sm',
@@ -50,8 +59,9 @@ export function Avatar({ src, name = '', size = 'md', className }: AvatarProps) 
         src={imageUrl}
         alt={name}
         className={clsx(
-          'rounded-full object-cover',
+          'rounded-full object-cover transition-shadow duration-200',
           sizeClasses[size],
+          zoneRing,
           className
         )}
       />
@@ -61,9 +71,10 @@ export function Avatar({ src, name = '', size = 'md', className }: AvatarProps) 
   return (
     <div
       className={clsx(
-        'rounded-full flex items-center justify-center text-white font-medium',
+        'rounded-full flex items-center justify-center text-white font-medium transition-shadow duration-200',
         sizeClasses[size],
         bgColor,
+        zoneRing,
         className
       )}
     >

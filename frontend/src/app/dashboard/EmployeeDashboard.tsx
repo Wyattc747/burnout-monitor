@@ -14,7 +14,6 @@ import { PersonalizationPrompt } from '@/components/PersonalizationPrompt';
 import { WellnessStreaks } from '@/components/WellnessStreaks';
 import { InsightsAndAlerts } from '@/components/InsightsAndAlerts';
 import { EmailMetrics } from '@/components/EmailMetrics';
-import { WellnessResources } from '@/components/WellnessResources';
 import { personalizationApi } from '@/lib/api';
 import { clsx } from 'clsx';
 
@@ -224,9 +223,6 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
           </div>
         </div>
       )}
-
-      {/* Wellness Resources */}
-      <WellnessResources />
 
       {/* Support Bot */}
       {isBotOpen ? (
