@@ -21,13 +21,13 @@ const healthMetricsPoor = {
 };
 
 const healthMetricsModerate = {
-  sleepHours: 6.5,
-  sleepQualityScore: 65,
-  heartRateVariability: 42,
-  restingHeartRate: 68,
-  deepSleepHours: 1.2,
-  exerciseMinutes: 20,
-  recoveryScore: 60,
+  sleepHours: 6.0,
+  sleepQualityScore: 55,
+  heartRateVariability: 38,
+  restingHeartRate: 72,
+  deepSleepHours: 1.0,
+  exerciseMinutes: 15,
+  recoveryScore: 50,
 };
 
 const workMetricsGood = {
@@ -47,11 +47,11 @@ const workMetricsPoor = {
 };
 
 const workMetricsModerate = {
-  hoursWorked: 8.5,
-  overtimeHours: 0.5,
-  tasksCompleted: 6,
+  hoursWorked: 9.0,
+  overtimeHours: 1.0,
+  tasksCompleted: 5,
   tasksAssigned: 7,
-  meetingsAttended: 5,
+  meetingsAttended: 6,
 };
 
 const baselines = {

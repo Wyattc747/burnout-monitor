@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const db = require('../utils/db');
 const { authenticate, requireRole } = require('../middleware/auth');
+const aggregateService = require('../services/aggregateService');
 
 const router = express.Router();
 
@@ -332,6 +333,44 @@ router.post('/invitations/accept', async (req, res) => {
   } catch (err) {
     console.error('Accept invitation error:', err);
     res.status(500).json({ error: 'Server Error', message: 'Failed to accept invitation' });
+  }
+});
+
+// ============================================
+// TEAM WELLNESS OVERVIEW (Privacy-preserving)
+// ============================================
+
+// GET /api/teams/wellness-overview - Get privacy-preserving aggregate view
+router.get('/wellness-overview', requireRole('manager'), async (req, res) => {
+  try {
+    const managerEmployeeId = req.user.employeeId;
+    const overview = await aggregateService.getWellnessOverview(managerEmployeeId);
+
+    if (overview.error) {
+      return res.status(403).json(overview);
+    }
+
+    res.json(overview);
+  } catch (err) {
+    console.error('Get wellness overview error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to get wellness overview' });
+  }
+});
+
+// GET /api/teams/aggregates-consented - Get aggregates respecting consent settings
+router.get('/aggregates-consented', requireRole('manager'), async (req, res) => {
+  try {
+    const managerEmployeeId = req.user.employeeId;
+    const aggregates = await aggregateService.getConsentedTeamAggregates(managerEmployeeId);
+
+    if (aggregates.error) {
+      return res.status(403).json(aggregates);
+    }
+
+    res.json(aggregates);
+  } catch (err) {
+    console.error('Get consented aggregates error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to get aggregates' });
   }
 });
 

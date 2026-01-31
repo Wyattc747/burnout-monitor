@@ -12,21 +12,23 @@ const { generateAllDemoData, EMPLOYEE_PROFILES } = require('../src/services/synt
 
 describe('E2E Demo Verification', () => {
   describe('Demo Employee Profiles', () => {
-    it('should have 5 distinct employee profiles', () => {
+    it('should have 7 distinct employee profiles', () => {
       const profiles = Object.keys(EMPLOYEE_PROFILES);
-      expect(profiles).toHaveLength(5);
+      expect(profiles).toHaveLength(7);
       expect(profiles).toEqual([
         'peakPerformer',
         'moderateStress',
         'highBurnout',
         'recovery',
         'variable',
+        'newHire',
+        'remoteSenior',
       ]);
     });
 
-    it('Alex Chen (peakPerformer) should be in GREEN zone', () => {
+    it('Wyatt Cooper (peakPerformer) should be in GREEN zone', () => {
       const profile = EMPLOYEE_PROFILES.peakPerformer;
-      expect(profile.firstName).toBe('Alex');
+      expect(profile.firstName).toBe('Wyatt');
       expect(profile.expectedZone).toBe('green');
 
       // Verify scoring produces green zone with typical values
@@ -58,42 +60,43 @@ describe('E2E Demo Verification', () => {
       expect(scores.zone).toBe('green');
     });
 
-    it('Jordan Smith (moderateStress) should be in YELLOW zone', () => {
+    it('Woody Klemetson (moderateStress) should be in YELLOW zone', () => {
       const profile = EMPLOYEE_PROFILES.moderateStress;
-      expect(profile.firstName).toBe('Jordan');
+      expect(profile.firstName).toBe('Woody');
       expect(profile.expectedZone).toBe('yellow');
 
       const health = {
-        sleepHours: 6.5,
-        sleepQualityScore: 65,
-        heartRateVariability: 42,
-        restingHeartRate: 68,
-        deepSleepHours: 1.2,
-        exerciseMinutes: 20,
-        recoveryScore: 60,
+        sleepHours: 6.0,
+        sleepQualityScore: 58,
+        heartRateVariability: 38,
+        restingHeartRate: 72,
+        deepSleepHours: 1.0,
+        exerciseMinutes: 15,
+        recoveryScore: 50,
       };
       const work = {
-        hoursWorked: 8.5,
-        overtimeHours: 0.5,
-        tasksCompleted: 6,
-        tasksAssigned: 7,
-        meetingsAttended: 5,
+        hoursWorked: 9.0,
+        overtimeHours: 1.0,
+        tasksCompleted: 5,
+        tasksAssigned: 8,
+        meetingsAttended: 6,
       };
+      // Baselines set higher than actuals to show deficit
       const baselines = {
-        baselineSleepHours: 6.5,
-        baselineSleepQuality: 65,
-        baselineHrv: 42,
-        baselineRestingHr: 68,
-        baselineHoursWorked: 8.5,
+        baselineSleepHours: 7.0,
+        baselineSleepQuality: 70,
+        baselineHrv: 45,
+        baselineRestingHr: 65,
+        baselineHoursWorked: 8.0,
       };
 
       const scores = calculateEmployeeScores(health, work, baselines);
       expect(scores.zone).toBe('yellow');
     });
 
-    it('Sam Wilson (highBurnout) should be in RED zone', () => {
+    it('Robert Henderson (highBurnout) should be in RED zone', () => {
       const profile = EMPLOYEE_PROFILES.highBurnout;
-      expect(profile.firstName).toBe('Sam');
+      expect(profile.firstName).toBe('Robert');
       expect(profile.expectedZone).toBe('red');
 
       const health = {
@@ -125,15 +128,15 @@ describe('E2E Demo Verification', () => {
       expect(scores.burnoutScore).toBeGreaterThan(70);
     });
 
-    it('Taylor Brown (recovery) should show improving trend', () => {
+    it('Ben Harrison (recovery) should show improving trend', () => {
       const profile = EMPLOYEE_PROFILES.recovery;
-      expect(profile.firstName).toBe('Taylor');
+      expect(profile.firstName).toBe('Ben');
       expect(profile.trajectory).toBe('improving');
     });
 
-    it('Casey Davis (variable) should oscillate between states', () => {
+    it('Andrew Brown (variable) should oscillate between states', () => {
       const profile = EMPLOYEE_PROFILES.variable;
-      expect(profile.firstName).toBe('Casey');
+      expect(profile.firstName).toBe('Andrew');
       expect(profile.pattern).toBeDefined();
       expect(profile.pattern.length).toBeGreaterThan(1);
     });
@@ -143,7 +146,7 @@ describe('E2E Demo Verification', () => {
     it('should generate 30 days of data for all employees', () => {
       const allData = generateAllDemoData(30);
 
-      expect(allData).toHaveLength(5);
+      expect(allData).toHaveLength(7);
 
       allData.forEach(emp => {
         expect(emp.healthData).toHaveLength(30);
@@ -157,21 +160,21 @@ describe('E2E Demo Verification', () => {
       const ids = allData.map(e => e.profile.id);
       const uniqueIds = new Set(ids);
 
-      expect(uniqueIds.size).toBe(5);
+      expect(uniqueIds.size).toBe(7);
     });
 
     it('should generate consistent profile data', () => {
       const allData = generateAllDemoData();
 
-      const alex = allData.find(e => e.profile.firstName === 'Alex');
-      expect(alex).toBeDefined();
-      expect(alex.profile.email).toBe('alex@demo.com');
-      expect(alex.profile.department).toBe('Engineering');
+      const wyatt = allData.find(e => e.profile.firstName === 'Wyatt');
+      expect(wyatt).toBeDefined();
+      expect(wyatt.profile.email).toBe('wyatt@demo.com');
+      expect(wyatt.profile.department).toBe('Engineering');
 
-      const sam = allData.find(e => e.profile.firstName === 'Sam');
-      expect(sam).toBeDefined();
-      expect(sam.profile.email).toBe('sam@demo.com');
-      expect(sam.profile.jobTitle).toBe('Tech Lead');
+      const robert = allData.find(e => e.profile.firstName === 'Robert');
+      expect(robert).toBeDefined();
+      expect(robert.profile.email).toBe('robert@demo.com');
+      expect(robert.profile.jobTitle).toBe('Tech Lead');
     });
   });
 
@@ -211,7 +214,7 @@ describe('E2E Demo Verification', () => {
       expect(negativeFactors.length).toBeGreaterThan(0);
 
       // Should have recommendations
-      expect(scores.explanation.recommendations.length).toBeGreaterThan(0);
+      expect(scores.explanation.recommendations.personal.length).toBeGreaterThan(0);
     });
 
     it('should provide factors for green zone', () => {
@@ -248,7 +251,7 @@ describe('E2E Demo Verification', () => {
       expect(positiveFactors.length).toBeGreaterThan(0);
 
       // Should have opportunity-focused recommendations
-      expect(scores.explanation.recommendations.length).toBeGreaterThan(0);
+      expect(scores.explanation.recommendations.personal.length).toBeGreaterThan(0);
     });
 
     it('should include factor descriptions and values', () => {
@@ -301,14 +304,16 @@ describe('E2E Demo Verification', () => {
     it('should have correct demo account configuration', () => {
       const demoAccounts = [
         { email: 'manager@demo.com', role: 'manager' },
-        { email: 'alex@demo.com', role: 'employee', profile: 'peakPerformer' },
-        { email: 'jordan@demo.com', role: 'employee', profile: 'moderateStress' },
-        { email: 'sam@demo.com', role: 'employee', profile: 'highBurnout' },
-        { email: 'taylor@demo.com', role: 'employee', profile: 'recovery' },
-        { email: 'casey@demo.com', role: 'employee', profile: 'variable' },
+        { email: 'wyatt@demo.com', role: 'employee', profile: 'peakPerformer' },
+        { email: 'woody@demo.com', role: 'employee', profile: 'moderateStress' },
+        { email: 'robert@demo.com', role: 'employee', profile: 'highBurnout' },
+        { email: 'ben@demo.com', role: 'employee', profile: 'recovery' },
+        { email: 'andrew@demo.com', role: 'employee', profile: 'variable' },
+        { email: 'emily@demo.com', role: 'employee', profile: 'newHire' },
+        { email: 'marcus@demo.com', role: 'employee', profile: 'remoteSenior' },
       ];
 
-      expect(demoAccounts).toHaveLength(6); // 1 manager + 5 employees
+      expect(demoAccounts).toHaveLength(8); // 1 manager + 7 employees
 
       // Verify employee emails match profiles
       Object.values(EMPLOYEE_PROFILES).forEach(profile => {

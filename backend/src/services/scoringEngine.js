@@ -1,9 +1,11 @@
 /**
  * Burnout & Readiness Scoring Engine
- * Calculates employee wellness scores with personalization support
+ * Calculates employee wellness scores with personalization support,
+ * non-linear interaction effects, context awareness, and self-report calibration
  */
 
 const db = require('../utils/db');
+const thresholdService = require('./thresholdService');
 
 /**
  * Get personalized settings for an employee
@@ -46,6 +48,191 @@ async function getPersonalizedSettings(employeeId) {
     activeEvents,
     adjustments: lifeEventAdjustments,
   };
+}
+
+/**
+ * Calculate non-linear interaction effects between factors
+ * When multiple factors exceed thresholds simultaneously, their combined impact is worse
+ */
+function calculateInteractionEffects(factors, thresholds = { high: 50, critical: 70 }) {
+  const interactionPairs = [
+    { factors: ['sleepDeficit', 'workOverload'], multiplier: 1.3, name: 'Sleep-Work Stress' },
+    { factors: ['hrvStress', 'workOverload'], multiplier: 1.25, name: 'Physiological-Work Stress' },
+    { factors: ['sleepDeficit', 'hrvStress'], multiplier: 1.2, name: 'Sleep-Physiological Stress' },
+    { factors: ['sleepDeficit', 'recoveryDeficit'], multiplier: 1.35, name: 'Cumulative Recovery Deficit' },
+  ];
+
+  let totalPenalty = 0;
+  const interactions = [];
+
+  for (const pair of interactionPairs) {
+    const [f1, f2] = pair.factors;
+    const factor1Value = factors[f1] || 0;
+    const factor2Value = factors[f2] || 0;
+
+    if (factor1Value > thresholds.high && factor2Value > thresholds.high) {
+      // Calculate synergy penalty using geometric mean of excess amounts
+      const excess1 = factor1Value - thresholds.high;
+      const excess2 = factor2Value - thresholds.high;
+      const synergy = Math.sqrt(excess1 * excess2) * (pair.multiplier - 1);
+
+      totalPenalty += synergy;
+      interactions.push({
+        name: pair.name,
+        factors: pair.factors,
+        penalty: Math.round(synergy * 10) / 10,
+        severity: factor1Value > thresholds.critical && factor2Value > thresholds.critical ? 'critical' : 'elevated',
+      });
+    }
+  }
+
+  // Cap total penalty at 30 points to prevent runaway scores
+  return {
+    totalPenalty: Math.min(30, totalPenalty),
+    interactions,
+    hasInteractions: interactions.length > 0,
+  };
+}
+
+/**
+ * Get context factors based on day of week and time patterns
+ */
+function getContextFactors(date = new Date()) {
+  const dayOfWeek = date.getDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  const dayPatterns = {
+    0: { workloadExpectation: 0.3, label: 'Weekend Recovery', recoveryBonus: 10 },
+    1: { workloadExpectation: 1.1, label: 'Monday Transition', recoveryBonus: 0 },
+    2: { workloadExpectation: 1.0, label: 'Mid-Week', recoveryBonus: 0 },
+    3: { workloadExpectation: 1.0, label: 'Mid-Week', recoveryBonus: 0 },
+    4: { workloadExpectation: 1.0, label: 'Mid-Week', recoveryBonus: 0 },
+    5: { workloadExpectation: 0.85, label: 'Friday Wind-Down', recoveryBonus: 5 },
+    6: { workloadExpectation: 0.3, label: 'Weekend Recovery', recoveryBonus: 10 },
+  };
+
+  const pattern = dayPatterns[dayOfWeek] || { workloadExpectation: 1.0, label: 'Standard', recoveryBonus: 0 };
+
+  return {
+    isWeekend,
+    dayOfWeek,
+    dayLabel: pattern.label,
+    workloadExpectation: pattern.workloadExpectation,
+    recoveryBonus: pattern.recoveryBonus,
+  };
+}
+
+/**
+ * Get vacation/break context for an employee
+ * Calculates fatigue accumulation based on time since last good recovery
+ */
+async function getVacationContext(employeeId) {
+  try {
+    // Query for last green-zone day with high readiness
+    const result = await db.query(`
+      SELECT date FROM zone_history
+      WHERE employee_id = $1 AND zone = 'green' AND readiness_score >= 80
+      ORDER BY date DESC LIMIT 1
+    `, [employeeId]);
+
+    const lastGoodRecovery = result.rows[0]?.date;
+    const daysSinceRest = lastGoodRecovery
+      ? Math.floor((Date.now() - new Date(lastGoodRecovery).getTime()) / (24 * 60 * 60 * 1000))
+      : 30; // Default to 30 if no data
+
+    // Fatigue accumulates progressively after extended periods without good recovery
+    let fatigueFactor = 0;
+    let fatigueLevel = 'normal';
+
+    if (daysSinceRest > 30) {
+      fatigueFactor = 15;
+      fatigueLevel = 'high';
+    } else if (daysSinceRest > 21) {
+      fatigueFactor = 10;
+      fatigueLevel = 'elevated';
+    } else if (daysSinceRest > 14) {
+      fatigueFactor = 5;
+      fatigueLevel = 'moderate';
+    }
+
+    return {
+      daysSinceRest,
+      fatigueFactor,
+      fatigueLevel,
+      needsBreak: daysSinceRest > 21,
+      lastGoodRecoveryDate: lastGoodRecovery || null,
+    };
+  } catch (err) {
+    console.error('Error getting vacation context:', err);
+    return {
+      daysSinceRest: 0,
+      fatigueFactor: 0,
+      fatigueLevel: 'unknown',
+      needsBreak: false,
+      lastGoodRecoveryDate: null,
+    };
+  }
+}
+
+/**
+ * Get self-report calibration factor based on feeling check-ins
+ * Adjusts algorithmic scores based on employee's subjective experience
+ */
+async function getSelfReportCalibration(employeeId) {
+  try {
+    const checkinsResult = await db.query(`
+      SELECT
+        overall_feeling,
+        stress_level,
+        context_snapshot,
+        burnout_score_at_checkin
+      FROM feeling_checkins
+      WHERE employee_id = $1 AND created_at >= NOW() - INTERVAL '14 days'
+      ORDER BY created_at DESC LIMIT 10
+    `, [employeeId]);
+
+    const checkins = checkinsResult.rows;
+
+    if (checkins.length < 3) {
+      return { hasCalibration: false, factor: 1.0, discrepancy: 0, sampleSize: checkins.length };
+    }
+
+    // Convert self-reported feelings to burnout scale (invert: low feeling = high burnout)
+    // overall_feeling is 1-5 where 5 is best
+    const avgFeeling = checkins.reduce((sum, c) => sum + (c.overall_feeling || 3), 0) / checkins.length;
+    const avgStress = checkins.reduce((sum, c) => sum + (c.stress_level || 3), 0) / checkins.length;
+
+    // Convert to burnout scale: feeling 1 -> burnout 80, feeling 5 -> burnout 0
+    // stress 1 -> 0 burnout contribution, stress 5 -> 40 burnout contribution
+    const selfReportedBurnout = (5 - avgFeeling) * 20 + (avgStress - 1) * 10;
+
+    // Get average algorithmic score at check-in times
+    const algorithmicScores = checkins
+      .filter(c => c.burnout_score_at_checkin != null)
+      .map(c => parseFloat(c.burnout_score_at_checkin));
+
+    if (algorithmicScores.length < 2) {
+      return { hasCalibration: false, factor: 1.0, discrepancy: 0, sampleSize: checkins.length };
+    }
+
+    const avgAlgorithmic = algorithmicScores.reduce((a, b) => a + b, 0) / algorithmicScores.length;
+    const discrepancy = selfReportedBurnout - avgAlgorithmic;
+
+    // Calibration factor bounded to +/- 20% to prevent extreme adjustments
+    const factor = Math.max(0.8, Math.min(1.2, 1 + discrepancy / 100));
+
+    return {
+      hasCalibration: true,
+      factor,
+      discrepancy: Math.round(discrepancy * 10) / 10,
+      sampleSize: checkins.length,
+      selfReportedBurnout: Math.round(selfReportedBurnout),
+      avgAlgorithmic: Math.round(avgAlgorithmic),
+    };
+  } catch (err) {
+    console.error('Error getting self-report calibration:', err);
+    return { hasCalibration: false, factor: 1.0, discrepancy: 0, sampleSize: 0 };
+  }
 }
 
 /**
@@ -101,10 +288,18 @@ function applyPersonalization(baselines, preferences, adjustments) {
 
 /**
  * Calculate burnout score (0-100, higher = more risk)
+ * Now includes non-linear interaction effects and context awareness
  */
-function calculateBurnoutScore(health, work, baselines, personalized = null) {
+function calculateBurnoutScore(health, work, baselines, personalized = null, options = {}) {
   const settings = personalized || baselines;
   const factors = [];
+  const {
+    enableInteractions = true,
+    interactionThresholds = { high: 50, critical: 70 },
+    contextFactors = null,
+    vacationContext = null,
+    calibrationFactor = 1.0,
+  } = options;
 
   // Get personalized weights or use defaults
   const weights = {
@@ -141,8 +336,19 @@ function calculateBurnoutScore(health, work, baselines, personalized = null) {
     category: 'burnout',
   });
 
-  // Factor 3: Work Overload
-  const workOverload = calculateWorkOverloadFactor(work, settings);
+  // Factor 3: Work Overload (with context adjustment)
+  let workOverload = calculateWorkOverloadFactor(work, settings);
+
+  // Apply weekend/day-of-week adjustment if context is provided
+  if (contextFactors && contextFactors.workloadExpectation !== 1.0) {
+    // If it's a weekend/Friday, reduce work overload penalty
+    const adjustedHoursWorked = work.hoursWorked / contextFactors.workloadExpectation;
+    if (work.hoursWorked < settings.baselineHoursWorked * contextFactors.workloadExpectation) {
+      // Working less than expected for this day - reduce penalty
+      workOverload = Math.max(0, workOverload - contextFactors.recoveryBonus);
+    }
+  }
+
   factors.push({
     name: 'Work Hours',
     rawValue: work.hoursWorked,
@@ -150,6 +356,7 @@ function calculateBurnoutScore(health, work, baselines, personalized = null) {
     weight: weights.work,
     impact: workOverload > 50 ? 'negative' : workOverload < 30 ? 'positive' : 'neutral',
     category: 'burnout',
+    contextAdjusted: !!contextFactors,
   });
 
   // Factor 4: Recovery Deficit
@@ -163,13 +370,45 @@ function calculateBurnoutScore(health, work, baselines, personalized = null) {
     category: 'burnout',
   });
 
-  const score =
+  // Calculate base score
+  let score =
     sleepDeficit * weights.sleep +
     hrvStress * weights.hrv +
     workOverload * weights.work +
     recoveryDeficit * weights.recovery;
 
-  return { score: Math.min(100, Math.max(0, score)), factors };
+  // Calculate and apply interaction effects
+  let interactionResult = { totalPenalty: 0, interactions: [], hasInteractions: false };
+  if (enableInteractions) {
+    const factorValues = {
+      sleepDeficit,
+      hrvStress,
+      workOverload,
+      recoveryDeficit,
+    };
+    interactionResult = calculateInteractionEffects(factorValues, interactionThresholds);
+    score += interactionResult.totalPenalty;
+  }
+
+  // Apply vacation fatigue factor
+  if (vacationContext && vacationContext.fatigueFactor > 0) {
+    score += vacationContext.fatigueFactor;
+  }
+
+  // Apply self-report calibration
+  if (calibrationFactor !== 1.0) {
+    score = score * calibrationFactor;
+  }
+
+  return {
+    score: Math.min(100, Math.max(0, score)),
+    factors,
+    interactions: interactionResult.interactions,
+    hasInteractions: interactionResult.hasInteractions,
+    interactionPenalty: interactionResult.totalPenalty,
+    vacationFatigue: vacationContext?.fatigueFactor || 0,
+    calibrationApplied: calibrationFactor !== 1.0,
+  };
 }
 
 /**
@@ -379,19 +618,23 @@ function calculateActivityBalanceFactor(health, settings) {
 }
 
 /**
- * Determine zone based on scores
+ * Determine zone based on scores with configurable thresholds
  */
-function determineZone(burnoutScore, readinessScore) {
-  if (burnoutScore >= 70) return 'red';
-  if (readinessScore >= 70) return 'green';
+function determineZone(burnoutScore, readinessScore, thresholds = null) {
+  const burnoutThreshold = thresholds?.burnoutRedThreshold || 70;
+  const readinessThreshold = thresholds?.readinessGreenThreshold || 70;
+
+  if (burnoutScore >= burnoutThreshold) return 'red';
+  if (readinessScore >= readinessThreshold) return 'green';
   return 'yellow';
 }
 
 /**
  * Generate human-readable explanation for current zone
  */
-function generateExplanation(burnoutScore, readinessScore, burnoutFactors, readinessFactors, settings, personalization = null) {
-  const zone = determineZone(burnoutScore, readinessScore);
+function generateExplanation(burnoutScore, readinessScore, burnoutFactors, readinessFactors, settings, personalization = null, enhancedContext = null) {
+  const thresholds = enhancedContext?.thresholds || null;
+  const zone = determineZone(burnoutScore, readinessScore, thresholds);
 
   // Combine and sort factors by impact
   const allFactors = [...burnoutFactors, ...readinessFactors];
@@ -426,6 +669,38 @@ function generateExplanation(burnoutScore, readinessScore, burnoutFactors, readi
     if (personalization.preferences) {
       context.usingPersonalBaselines = true;
       context.chronotype = personalization.preferences.chronotype;
+    }
+  }
+
+  // Add enhanced context info
+  if (enhancedContext) {
+    if (enhancedContext.interactions && enhancedContext.interactions.length > 0) {
+      context.interactionEffects = enhancedContext.interactions.map(i => ({
+        name: i.name,
+        severity: i.severity,
+        description: `${i.name} is compounding your stress (+${i.penalty} points)`,
+      }));
+    }
+    if (enhancedContext.vacationContext?.needsBreak) {
+      context.vacationAlert = {
+        daysSinceRest: enhancedContext.vacationContext.daysSinceRest,
+        message: 'Extended period without good recovery detected. Consider taking time off.',
+      };
+    }
+    if (enhancedContext.calibration?.hasCalibration) {
+      context.calibrationInfo = {
+        applied: true,
+        discrepancy: enhancedContext.calibration.discrepancy,
+        message: enhancedContext.calibration.discrepancy > 0
+          ? 'Score adjusted up based on your check-ins'
+          : 'Score adjusted down based on your check-ins',
+      };
+    }
+    if (enhancedContext.contextFactors?.isWeekend) {
+      context.dayContext = {
+        label: enhancedContext.contextFactors.dayLabel,
+        message: 'Weekend recovery expectations applied',
+      };
     }
   }
 
@@ -627,18 +902,54 @@ function generateRecommendations(zone, factors, personalization) {
 
 /**
  * Calculate all scores for an employee with personalization
+ * Includes interaction effects, context awareness, and self-report calibration
  */
-async function calculateEmployeeScoresPersonalized(employeeId, health, work, baselines) {
+async function calculateEmployeeScoresPersonalized(employeeId, health, work, baselines, options = {}) {
   // Get personalized settings
   const personalization = await getPersonalizedSettings(employeeId);
+
+  // Get configurable thresholds
+  const thresholds = await thresholdService.getThresholdsForEmployee(employeeId);
+
+  // Get context factors
+  const contextFactors = thresholds.weekendAdjustmentEnabled
+    ? getContextFactors(options.date || new Date())
+    : null;
+
+  // Get vacation context
+  const vacationContext = await getVacationContext(employeeId);
+
+  // Get self-report calibration
+  const calibration = await getSelfReportCalibration(employeeId);
 
   // Apply personalization to baselines
   const personalizedSettings = applyPersonalization(baselines, personalization.preferences, personalization.adjustments);
 
-  // Calculate scores with personalized settings
-  const burnout = calculateBurnoutScore(health, work, baselines, personalizedSettings);
+  // Build scoring options
+  const scoringOptions = {
+    enableInteractions: thresholds.enableInteractionEffects,
+    interactionThresholds: {
+      high: thresholds.interactionHighThreshold,
+      critical: thresholds.interactionCriticalThreshold,
+    },
+    contextFactors,
+    vacationContext,
+    calibrationFactor: calibration.factor,
+  };
+
+  // Calculate scores with personalized settings and enhanced options
+  const burnout = calculateBurnoutScore(health, work, baselines, personalizedSettings, scoringOptions);
   const readiness = calculateReadinessScore(health, work, baselines, personalizedSettings);
-  const zone = determineZone(burnout.score, readiness.score);
+  const zone = determineZone(burnout.score, readiness.score, thresholds);
+
+  // Build enhanced context for explanation
+  const enhancedContext = {
+    thresholds,
+    interactions: burnout.interactions,
+    vacationContext,
+    calibration,
+    contextFactors,
+  };
 
   const explanation = generateExplanation(
     burnout.score,
@@ -646,7 +957,8 @@ async function calculateEmployeeScoresPersonalized(employeeId, health, work, bas
     burnout.factors,
     readiness.factors,
     personalizedSettings,
-    personalization
+    personalization,
+    enhancedContext
   );
 
   return {
@@ -655,6 +967,25 @@ async function calculateEmployeeScoresPersonalized(employeeId, health, work, bas
     zone,
     explanation,
     personalized: !!personalization.preferences,
+    // New fields for enhanced scoring
+    interactionEffects: burnout.hasInteractions ? {
+      penalty: burnout.interactionPenalty,
+      details: burnout.interactions,
+    } : null,
+    vacationFatigue: vacationContext.fatigueFactor > 0 ? {
+      daysSinceRest: vacationContext.daysSinceRest,
+      penalty: vacationContext.fatigueFactor,
+      needsBreak: vacationContext.needsBreak,
+    } : null,
+    calibration: calibration.hasCalibration ? {
+      factor: calibration.factor,
+      discrepancy: calibration.discrepancy,
+    } : null,
+    thresholds: {
+      burnoutRed: thresholds.burnoutRedThreshold,
+      readinessGreen: thresholds.readinessGreenThreshold,
+      hasOverride: thresholds.hasEmployeeOverride,
+    },
   };
 }
 
@@ -691,4 +1022,9 @@ module.exports = {
   calculateEmployeeScoresPersonalized,
   getPersonalizedSettings,
   applyPersonalization,
+  // New exports for enhanced scoring
+  calculateInteractionEffects,
+  getContextFactors,
+  getVacationContext,
+  getSelfReportCalibration,
 };

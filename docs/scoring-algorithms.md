@@ -7,9 +7,18 @@ The system calculates two primary scores for each employee:
 2. **Readiness Score (0-100)**: Higher = More ready for challenging work
 
 These scores determine the employee's **zone**:
-- **RED** (Burnout Risk): burnout_score >= 70
-- **GREEN** (Peak Ready): burnout_score < 70 AND readiness_score >= 70
+- **RED** (Burnout Risk): burnout_score >= burnout_threshold (default: 70)
+- **GREEN** (Peak Ready): burnout_score < burnout_threshold AND readiness_score >= readiness_threshold (default: 70)
 - **YELLOW** (Moderate): All other cases
+
+## Enhanced Scoring Features (v2.0)
+
+The scoring engine now includes:
+1. **Non-linear Interaction Effects**: Combined stressors compound each other
+2. **Configurable Thresholds**: Per-organization and per-employee threshold overrides
+3. **Context Awareness**: Day-of-week adjustments and vacation fatigue detection
+4. **Self-Report Calibration**: Algorithmic scores calibrated against feeling check-ins
+5. **Privacy-Preserving Aggregates**: Team views with minimum size requirements
 
 ## Input Metrics
 
@@ -360,6 +369,171 @@ function detectZoneTransition(
   };
 }
 ```
+
+---
+
+## Non-Linear Interaction Effects
+
+### Problem
+The linear model (`score = f1*0.25 + f2*0.25 + ...`) doesn't capture synergy where combined stressors are worse than their sum.
+
+### Solution
+The `calculateInteractionEffects()` function applies penalties when multiple factors exceed thresholds simultaneously.
+
+```javascript
+const interactionPairs = [
+  { factors: ['sleepDeficit', 'workOverload'], multiplier: 1.3, name: 'Sleep-Work Stress' },
+  { factors: ['hrvStress', 'workOverload'], multiplier: 1.25, name: 'Physiological-Work Stress' },
+  { factors: ['sleepDeficit', 'hrvStress'], multiplier: 1.2, name: 'Sleep-Physiological Stress' },
+  { factors: ['sleepDeficit', 'recoveryDeficit'], multiplier: 1.35, name: 'Cumulative Recovery Deficit' },
+];
+```
+
+When both factors in a pair exceed the `high` threshold (default: 50), a synergy penalty is calculated:
+
+```javascript
+synergy = sqrt((factor1 - threshold) * (factor2 - threshold)) * (multiplier - 1)
+```
+
+The total interaction penalty is capped at 30 points to prevent runaway scores.
+
+### Example
+If sleepDeficit = 65 and workOverload = 70, both exceed threshold 50:
+- excess1 = 65 - 50 = 15
+- excess2 = 70 - 50 = 20
+- synergy = sqrt(15 * 20) * 0.3 = 5.2 points added to burnout score
+
+---
+
+## Configurable Thresholds
+
+### Database Tables
+
+```sql
+-- Organization-level defaults
+CREATE TABLE organization_thresholds (
+  organization_id UUID,
+  burnout_red_threshold INTEGER DEFAULT 70,
+  readiness_green_threshold INTEGER DEFAULT 70,
+  threshold_type VARCHAR(20) DEFAULT 'absolute',  -- 'absolute' or 'percentile'
+  interaction_high_threshold INTEGER DEFAULT 50,
+  enable_interaction_effects BOOLEAN DEFAULT true,
+  weekend_adjustment_enabled BOOLEAN DEFAULT true
+);
+
+-- Individual overrides
+CREATE TABLE employee_threshold_overrides (
+  employee_id UUID,
+  burnout_red_threshold INTEGER,
+  readiness_green_threshold INTEGER,
+  override_reason TEXT,
+  start_date DATE,
+  end_date DATE  -- NULL for permanent
+);
+```
+
+### Threshold Resolution Order
+1. Active employee override (if exists and within date range)
+2. Organization threshold (if employee belongs to organization)
+3. System default (70/70)
+
+### Percentile-Based Thresholds
+When `threshold_type = 'percentile'`, thresholds are calculated dynamically based on the organization's historical score distribution.
+
+---
+
+## Context Awareness
+
+### Day-of-Week Adjustments
+
+```javascript
+const dayPatterns = {
+  0: { workloadExpectation: 0.3, label: 'Weekend Recovery' },   // Sunday
+  1: { workloadExpectation: 1.1, label: 'Monday Transition' },
+  5: { workloadExpectation: 0.85, label: 'Friday Wind-Down' },
+  6: { workloadExpectation: 0.3, label: 'Weekend Recovery' },   // Saturday
+  // 2,3,4 default to 1.0
+};
+```
+
+On weekends/Fridays, work overload penalties are reduced proportionally.
+
+### Vacation Fatigue Factor
+
+Fatigue accumulates progressively when an employee hasn't had a "good recovery day" (green zone with readiness >= 80):
+
+| Days Since Rest | Fatigue Penalty | Level |
+|-----------------|-----------------|-------|
+| 0-14 | 0 | Normal |
+| 15-21 | +5 | Moderate |
+| 22-30 | +10 | Elevated |
+| 31+ | +15 | High |
+
+A `needsBreak` flag is set when days since rest exceeds 21.
+
+---
+
+## Self-Report Calibration
+
+### Purpose
+Adjust algorithmic scores based on the employee's subjective experience from feeling check-ins.
+
+### Calculation
+
+1. Gather last 14 days of check-ins (minimum 3 required)
+2. Convert self-reported feelings to burnout scale:
+   - `selfReportedBurnout = (5 - avgFeeling) * 20 + (avgStress - 1) * 10`
+3. Compare with algorithmic scores at check-in time
+4. Calculate calibration factor:
+   - `factor = 1 + (selfReportedBurnout - avgAlgorithmic) / 100`
+   - Bounded to 0.8 - 1.2 (±20% adjustment)
+
+### Example
+- Average feeling: 2.5 (out of 5)
+- Average stress: 4.0 (out of 5)
+- Self-reported burnout: (5 - 2.5) * 20 + (4 - 1) * 10 = 50 + 30 = 80
+- Algorithmic average: 65
+- Discrepancy: 80 - 65 = 15
+- Calibration factor: 1 + 15/100 = 1.15 (scores adjusted up by 15%)
+
+---
+
+## Privacy-Preserving Team Aggregates
+
+### Minimum Team Size
+Aggregate views require at least **5 team members** to protect individual privacy.
+
+### Available Aggregates
+
+```javascript
+{
+  teamHealthScore: 75,        // Weighted score (0-100)
+  zoneDistribution: { red: 1, yellow: 3, green: 6 },
+  burnoutDistribution: { low: 5, moderate: 3, high: 2 },  // Bucketed
+  weeklyTrend: [...],         // Last 4 weeks
+  trendDirection: 'improving' | 'stable' | 'worsening',
+  actionItems: [...]          // Prioritized recommendations
+}
+```
+
+### Consent Management
+Employees can opt out of aggregate contribution via `scoring_consent.allow_aggregate_contribution`.
+
+---
+
+## API Endpoints
+
+### Consent Management
+- `GET /api/personalization/consent` - Get consent settings
+- `PUT /api/personalization/consent` - Update consent settings
+
+### Team Aggregates
+- `GET /api/teams/wellness-overview` - Privacy-preserving aggregate view
+- `GET /api/teams/aggregates-consented` - Aggregates respecting consent
+
+### Validated Self-Report
+- `GET /api/personalization/burnout-questions` - Get assessment questions
+- `POST /api/personalization/checkins/validated` - Create check-in with validated responses
 
 ## Demo Data Generation
 

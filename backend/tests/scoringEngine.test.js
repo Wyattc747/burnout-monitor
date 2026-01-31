@@ -175,8 +175,10 @@ describe('Scoring Engine', () => {
       );
 
       expect(explanation.recommendations).toBeDefined();
-      expect(Array.isArray(explanation.recommendations)).toBe(true);
-      expect(explanation.recommendations.length).toBeGreaterThan(0);
+      expect(explanation.recommendations.personal).toBeDefined();
+      expect(explanation.recommendations.leadership).toBeDefined();
+      expect(Array.isArray(explanation.recommendations.personal)).toBe(true);
+      expect(explanation.recommendations.personal.length).toBeGreaterThan(0);
     });
 
     it('should provide different recommendations for different zones', () => {

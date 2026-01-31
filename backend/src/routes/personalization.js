@@ -675,4 +675,239 @@ router.get('/summary', async (req, res) => {
   }
 });
 
+// ============================================
+// CONSENT MANAGEMENT
+// ============================================
+
+// GET /api/personalization/consent - Get user's consent settings
+router.get('/consent', async (req, res) => {
+  try {
+    const employeeId = req.user.employeeId;
+
+    const result = await db.query(`
+      SELECT
+        use_health_data,
+        use_work_data,
+        use_checkin_data,
+        allow_aggregate_contribution,
+        consent_updated_at
+      FROM scoring_consent
+      WHERE employee_id = $1
+    `, [employeeId]);
+
+    if (result.rows.length === 0) {
+      // Return defaults if no consent record exists
+      return res.json({
+        useHealthData: true,
+        useWorkData: true,
+        useCheckinData: true,
+        allowAggregateContribution: true,
+        consentUpdatedAt: null,
+        isDefault: true,
+      });
+    }
+
+    const row = result.rows[0];
+    res.json({
+      useHealthData: row.use_health_data,
+      useWorkData: row.use_work_data,
+      useCheckinData: row.use_checkin_data,
+      allowAggregateContribution: row.allow_aggregate_contribution,
+      consentUpdatedAt: row.consent_updated_at,
+      isDefault: false,
+    });
+  } catch (err) {
+    console.error('Get consent error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to get consent settings' });
+  }
+});
+
+// PUT /api/personalization/consent - Update user's consent settings
+router.put('/consent', async (req, res) => {
+  try {
+    const employeeId = req.user.employeeId;
+    const {
+      useHealthData,
+      useWorkData,
+      useCheckinData,
+      allowAggregateContribution,
+    } = req.body;
+
+    const result = await db.query(`
+      INSERT INTO scoring_consent (
+        employee_id,
+        use_health_data,
+        use_work_data,
+        use_checkin_data,
+        allow_aggregate_contribution,
+        consent_updated_at
+      ) VALUES ($1, $2, $3, $4, $5, NOW())
+      ON CONFLICT (employee_id)
+      DO UPDATE SET
+        use_health_data = COALESCE($2, scoring_consent.use_health_data),
+        use_work_data = COALESCE($3, scoring_consent.use_work_data),
+        use_checkin_data = COALESCE($4, scoring_consent.use_checkin_data),
+        allow_aggregate_contribution = COALESCE($5, scoring_consent.allow_aggregate_contribution),
+        consent_updated_at = NOW()
+      RETURNING *
+    `, [
+      employeeId,
+      useHealthData,
+      useWorkData,
+      useCheckinData,
+      allowAggregateContribution,
+    ]);
+
+    const row = result.rows[0];
+    res.json({
+      useHealthData: row.use_health_data,
+      useWorkData: row.use_work_data,
+      useCheckinData: row.use_checkin_data,
+      allowAggregateContribution: row.allow_aggregate_contribution,
+      consentUpdatedAt: row.consent_updated_at,
+      message: 'Consent settings updated successfully',
+    });
+  } catch (err) {
+    console.error('Update consent error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to update consent settings' });
+  }
+});
+
+// ============================================
+// VALIDATED INSTRUMENT QUESTIONS
+// ============================================
+
+// GET /api/personalization/burnout-questions - Get burnout assessment questions
+router.get('/burnout-questions', async (req, res) => {
+  try {
+    const { type = 'quick' } = req.query;
+
+    const result = await db.query(`
+      SELECT
+        id,
+        question_text,
+        question_order,
+        scale_min,
+        scale_max,
+        weight
+      FROM burnout_instrument_questions
+      WHERE instrument_type = $1 AND is_active = true
+      ORDER BY question_order
+    `, [type]);
+
+    res.json({
+      instrumentType: type,
+      questions: result.rows.map(row => ({
+        id: row.id,
+        text: row.question_text,
+        order: row.question_order,
+        scaleMin: row.scale_min,
+        scaleMax: row.scale_max,
+        weight: parseFloat(row.weight),
+      })),
+    });
+  } catch (err) {
+    console.error('Get burnout questions error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to get questions' });
+  }
+});
+
+// POST /api/personalization/checkins/validated - Create check-in with validated responses
+router.post('/checkins/validated', async (req, res) => {
+  try {
+    const employeeId = req.user.employeeId;
+    const {
+      overallFeeling,
+      energyLevel,
+      stressLevel,
+      motivationLevel,
+      notes,
+      validatedResponses, // Array of { questionId, response }
+    } = req.body;
+
+    // Validate required field
+    if (!overallFeeling || overallFeeling < 1 || overallFeeling > 5) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Overall feeling is required and must be between 1 and 5',
+      });
+    }
+
+    // Get current context snapshot and burnout score
+    const healthResult = await db.query(`
+      SELECT sleep_hours, sleep_quality_score, heart_rate_variability, exercise_minutes
+      FROM health_metrics
+      WHERE employee_id = $1
+      ORDER BY date DESC
+      LIMIT 1
+    `, [employeeId]);
+
+    const workResult = await db.query(`
+      SELECT hours_worked, meetings_attended, meeting_hours
+      FROM work_metrics
+      WHERE employee_id = $1
+      ORDER BY date DESC
+      LIMIT 1
+    `, [employeeId]);
+
+    // Get current burnout score for calibration
+    const zoneResult = await db.query(`
+      SELECT burnout_score
+      FROM zone_history
+      WHERE employee_id = $1
+      ORDER BY date DESC
+      LIMIT 1
+    `, [employeeId]);
+
+    const contextSnapshot = {
+      health: healthResult.rows[0] || null,
+      work: workResult.rows[0] || null,
+      timestamp: new Date().toISOString(),
+    };
+
+    const burnoutScoreAtCheckin = zoneResult.rows[0]?.burnout_score || null;
+
+    const result = await db.query(`
+      INSERT INTO feeling_checkins (
+        employee_id,
+        overall_feeling,
+        energy_level,
+        stress_level,
+        motivation_level,
+        notes,
+        context_snapshot,
+        validated_responses,
+        burnout_score_at_checkin
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `, [
+      employeeId,
+      overallFeeling,
+      energyLevel || null,
+      stressLevel || null,
+      motivationLevel || null,
+      notes || null,
+      contextSnapshot,
+      validatedResponses ? JSON.stringify(validatedResponses) : null,
+      burnoutScoreAtCheckin,
+    ]);
+
+    const row = result.rows[0];
+    res.status(201).json({
+      id: row.id,
+      overallFeeling: row.overall_feeling,
+      energyLevel: row.energy_level,
+      stressLevel: row.stress_level,
+      motivationLevel: row.motivation_level,
+      notes: row.notes,
+      validatedResponses: row.validated_responses,
+      burnoutScoreAtCheckin: row.burnout_score_at_checkin,
+      createdAt: row.created_at,
+    });
+  } catch (err) {
+    console.error('Create validated check-in error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to create check-in' });
+  }
+});
+
 module.exports = router;
