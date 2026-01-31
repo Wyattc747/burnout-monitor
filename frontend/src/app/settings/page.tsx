@@ -10,6 +10,7 @@ import { PrivacySettings } from '@/components/PrivacySettings';
 import { ReminderSettings } from '@/components/ReminderSettings';
 import { DataExport } from '@/components/DataExport';
 import { DeviceConnection } from '@/components/DeviceConnection';
+import { DeleteAccount } from '@/components/DeleteAccount';
 import { clsx } from 'clsx';
 
 type SettingsTab = 'profile' | 'notifications' | 'privacy' | 'integrations' | 'data';
@@ -464,6 +465,7 @@ export default function SettingsPage() {
         {activeTab === 'data' && (
           <div className="space-y-6">
             <DataExport />
+            <DeleteAccount />
           </div>
         )}
       </main>

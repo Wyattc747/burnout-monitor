@@ -198,13 +198,15 @@ async function seed() {
     }
 
     console.log('\n✅ Database seeded successfully!');
-    console.log('\nDemo accounts:');
-    console.log('  Manager:  manager@demo.com / demo123');
-    console.log('  Employee: alex@demo.com / demo123 (Peak Performer)');
-    console.log('  Employee: jordan@demo.com / demo123 (Moderate)');
-    console.log('  Employee: sam@demo.com / demo123 (Burnout Risk)');
-    console.log('  Employee: taylor@demo.com / demo123 (Recovery)');
-    console.log('  Employee: casey@demo.com / demo123 (Variable)');
+    console.log('\nDemo accounts (password: demo123):');
+    console.log('  Manager:  manager@demo.com (Morgan Smith)');
+    console.log('  Employee: wyatt@demo.com (Wyatt Cooper - Peak Performer)');
+    console.log('  Employee: woody@demo.com (Woody Klemetson - Moderate Stress)');
+    console.log('  Employee: robert@demo.com (Robert Henderson - High Burnout)');
+    console.log('  Employee: ben@demo.com (Ben Harrison - Recovery)');
+    console.log('  Employee: andrew@demo.com (Andrew Brown - Variable)');
+    console.log('  Employee: emily@demo.com (Emily Chen - New Hire)');
+    console.log('  Employee: marcus@demo.com (Marcus Williams - Remote Senior)');
 
   } catch (err) {
     console.error('Seed error:', err);

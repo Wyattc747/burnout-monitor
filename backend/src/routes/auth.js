@@ -178,6 +178,70 @@ router.post('/refresh', authenticate, async (req, res) => {
   }
 });
 
+// DELETE /api/auth/account - Delete user account
+router.delete('/account', authenticate, async (req, res) => {
+  try {
+    const { password } = req.body;
+    const userId = req.user.userId;
+
+    // Verify password before deletion
+    const userResult = await db.query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'User not found' });
+    }
+
+    const validPassword = await bcrypt.compare(password, userResult.rows[0].password_hash);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'Invalid password' });
+    }
+
+    // Get employee ID for cascade deletion
+    const employeeId = req.user.employeeId;
+
+    // Delete in order to respect foreign key constraints
+    if (employeeId) {
+      // Delete all employee-related data
+      await db.query('DELETE FROM wellness_streaks WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM email_metrics WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM detected_patterns WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM predictive_alerts WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM privacy_settings WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM zone_history WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM work_metrics WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM health_metrics WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM employee_baselines WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM feeling_checkins WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM personal_preferences WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM life_events WHERE employee_id = $1', [employeeId]);
+      await db.query('DELETE FROM alerts WHERE employee_id = $1', [employeeId]);
+
+      // Remove from any team (set manager_id to null for reports)
+      await db.query('UPDATE employees SET manager_id = NULL WHERE manager_id = $1', [employeeId]);
+
+      // Delete employee record
+      await db.query('DELETE FROM employees WHERE id = $1', [employeeId]);
+    }
+
+    // Delete user-related data
+    await db.query('DELETE FROM reminder_settings WHERE user_id = $1', [userId]);
+    await db.query('DELETE FROM notification_preferences WHERE user_id = $1', [userId]);
+    await db.query('DELETE FROM google_calendar_tokens WHERE user_id = $1', [userId]);
+    await db.query('DELETE FROM gmail_tokens WHERE user_id = $1', [userId]);
+
+    // Finally delete the user
+    await db.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (err) {
+    console.error('Delete account error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to delete account' });
+  }
+});
+
 // GET /api/auth/me
 router.get('/me', authenticate, async (req, res) => {
   try {
