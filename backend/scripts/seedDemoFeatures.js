@@ -90,17 +90,26 @@ async function seedDemoFeatures() {
       }
       console.log('  ✓ Email metrics (14 days)');
 
-      // Seed detected patterns
-      const patterns = [
+      // Seed detected patterns - ALL employees get 2-3 patterns
+      const allPatterns = [
         { type: 'correlation', title: 'Sleep impacts your productivity', desc: 'When you sleep 7+ hours, your task completion rate increases by 23%', impact: 'positive', confidence: 87 },
         { type: 'trend', title: 'Meeting load increasing', desc: 'Your meeting hours have increased 15% over the past 2 weeks', impact: 'negative', confidence: 92 },
         { type: 'anomaly', title: 'Unusual work pattern detected', desc: 'You worked 3 hours past your normal end time on Tuesday', impact: 'negative', confidence: 95 },
         { type: 'prediction', title: 'Recovery opportunity ahead', desc: 'Your calendar shows lighter meetings next week - great time to catch up on focus work', impact: 'positive', confidence: 78 },
+        { type: 'correlation', title: 'Exercise boosts your focus', desc: 'On days you exercise, your focus time increases by 35%', impact: 'positive', confidence: 82 },
+        { type: 'trend', title: 'Email volume rising', desc: 'Your daily email count has increased 25% over the past week', impact: 'negative', confidence: 88 },
+        { type: 'anomaly', title: 'Late night work session', desc: 'You sent emails after 10pm three times this week', impact: 'negative', confidence: 91 },
+        { type: 'prediction', title: 'High productivity week coming', desc: 'Based on your patterns, next week looks optimal for deep work', impact: 'positive', confidence: 75 },
       ];
 
-      const numPatterns = Math.floor(Math.random() * 2) + 1;
+      // Clear existing patterns for this employee
+      await db.query('DELETE FROM detected_patterns WHERE employee_id = $1', [employeeId]);
+
+      // Give each employee 2-3 unique patterns
+      const shuffledPatterns = allPatterns.sort(() => Math.random() - 0.5);
+      const numPatterns = Math.floor(Math.random() * 2) + 2; // 2-3 patterns
       for (let i = 0; i < numPatterns; i++) {
-        const pattern = patterns[Math.floor(Math.random() * patterns.length)];
+        const pattern = shuffledPatterns[i];
         await db.query(`
           INSERT INTO detected_patterns (
             employee_id, pattern_type, title, description,
@@ -108,17 +117,27 @@ async function seedDemoFeatures() {
           ) VALUES ($1, $2, $3, $4, $5, $6, 'weekly', true)
         `, [employeeId, pattern.type, pattern.title, pattern.desc, pattern.confidence, pattern.impact]);
       }
-      console.log('  ✓ Detected patterns');
+      console.log(`  ✓ Detected patterns (${numPatterns})`);
 
-      // Seed predictive alerts (only for some employees)
-      if (Math.random() > 0.4) {
-        const alertTypes = [
-          { type: 'burnout_risk', severity: 'medium', title: 'Burnout risk detected', message: 'Based on your recent patterns, you may be at risk of burnout in the next 2 weeks. Consider taking breaks and reducing overtime.', days: 14 },
-          { type: 'declining_trend', severity: 'low', title: 'Sleep quality declining', message: 'Your sleep quality has decreased 15% this week. Try to maintain consistent sleep times.', days: 7 },
-          { type: 'recovery_opportunity', severity: 'low', title: 'Great recovery week ahead', message: 'Your schedule looks lighter next week. This is a good opportunity to focus on wellness.', days: 5 },
-        ];
+      // Seed predictive alerts - ALL employees get 1-2 alerts
+      // Only these types are allowed by database constraint: burnout_risk, declining_trend, recovery_opportunity
+      const allAlerts = [
+        { type: 'burnout_risk', severity: 'high', title: 'Burnout risk detected', message: 'Based on your recent patterns, you may be at risk of burnout in the next 2 weeks. Consider taking breaks and reducing overtime.', days: 14 },
+        { type: 'burnout_risk', severity: 'medium', title: 'Elevated stress indicators', message: 'Your work hours and meeting load have increased. Monitor your energy levels closely.', days: 10 },
+        { type: 'declining_trend', severity: 'medium', title: 'Sleep quality declining', message: 'Your sleep quality has decreased 15% this week. Try to maintain consistent sleep times.', days: 7 },
+        { type: 'declining_trend', severity: 'low', title: 'Exercise frequency dropping', message: 'You have exercised less frequently this week. Regular movement helps maintain energy.', days: 5 },
+        { type: 'recovery_opportunity', severity: 'low', title: 'Great recovery week ahead', message: 'Your schedule looks lighter next week. This is a good opportunity to focus on wellness.', days: 5 },
+        { type: 'recovery_opportunity', severity: 'low', title: 'Positive momentum building', message: 'Your wellness scores have improved 3 days in a row. Keep up the great work!', days: 3 },
+      ];
 
-        const alert = alertTypes[Math.floor(Math.random() * alertTypes.length)];
+      // Clear existing predictive alerts for this employee
+      await db.query('DELETE FROM predictive_alerts WHERE employee_id = $1', [employeeId]);
+
+      // Give each employee 1-2 alerts
+      const shuffledAlerts = allAlerts.sort(() => Math.random() - 0.5);
+      const numAlerts = Math.floor(Math.random() * 2) + 1; // 1-2 alerts
+      for (let i = 0; i < numAlerts; i++) {
+        const alert = shuffledAlerts[i];
         await db.query(`
           INSERT INTO predictive_alerts (
             employee_id, alert_type, severity, title, message,
@@ -127,10 +146,10 @@ async function seedDemoFeatures() {
         `, [
           employeeId, alert.type, alert.severity, alert.title, alert.message,
           Math.floor(Math.random() * 20) + 70, alert.days,
-          JSON.stringify(['Take regular breaks', 'Prioritize sleep', 'Schedule focus time'])
+          JSON.stringify(['Take regular breaks', 'Prioritize sleep', 'Schedule focus time', 'Block time for deep work'])
         ]);
-        console.log('  ✓ Predictive alert');
       }
+      console.log(`  ✓ Predictive alerts (${numAlerts})`)
 
       // Seed zone history for past 30 days
       for (let i = 1; i <= 30; i++) {

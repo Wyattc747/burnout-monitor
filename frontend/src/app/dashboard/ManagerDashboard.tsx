@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { employeesApi, alertsApi } from '@/lib/api';
+import { teamsApi, alertsApi } from '@/lib/api';
 import { EmployeeCard } from '@/components/EmployeeCard';
 import { AlertCard } from '@/components/AlertCard';
 import { DemoControls } from '@/components/DemoControls';
@@ -19,8 +19,8 @@ export function ManagerDashboard() {
   const [alertFilter, setAlertFilter] = useState<'all' | 'unacknowledged'>('unacknowledged');
 
   const { data: employees, isLoading: loadingEmployees } = useQuery({
-    queryKey: ['employees'],
-    queryFn: employeesApi.getAll,
+    queryKey: ['team-members'],
+    queryFn: teamsApi.getMembers,
   });
 
   const { data: alerts, isLoading: loadingAlerts } = useQuery({
@@ -151,11 +151,11 @@ export function ManagerDashboard() {
       {/* Your Upcoming Meetings */}
       <UpcomingMeetings />
 
-      {/* 1:1 Meeting Suggestions */}
-      <MeetingSuggestions />
-
-      {/* Team Heatmap */}
-      <TeamHeatmap />
+      {/* 1:1 Meeting Suggestions & Team Heatmap */}
+      <div className="grid lg:grid-cols-2 gap-8">
+        <MeetingSuggestions />
+        <TeamHeatmap />
+      </div>
 
       {/* Team Management */}
       <TeamManagement />

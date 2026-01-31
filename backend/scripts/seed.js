@@ -48,7 +48,7 @@ async function seed() {
       INSERT INTO employees (user_id, first_name, last_name, email, department, job_title, hire_date)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
-    `, [managerId, 'Morgan', 'Smith', 'manager@demo.com', 'Engineering', 'Engineering Manager', '2022-03-01']);
+    `, [managerId, 'Demo', 'Manager', 'manager@demo.com', 'Engineering', 'Engineering Manager', '2022-03-01']);
     const managerEmployeeId = managerEmpResult.rows[0].id;
 
     // Set up manager notification preferences
@@ -57,7 +57,7 @@ async function seed() {
       VALUES ($1, true, true, true)
     `, [managerId]);
 
-    console.log('  Created manager@demo.com (Morgan Smith)');
+    console.log('  Created manager@demo.com (Demo Manager)');
 
     // Generate all demo data
     console.log('\nGenerating synthetic data for 5 employees...');
@@ -200,7 +200,7 @@ async function seed() {
 
     console.log('\n✅ Database seeded successfully!');
     console.log('\nDemo accounts (password: demo123):');
-    console.log('  Manager:  manager@demo.com (Morgan Smith)');
+    console.log('  Manager:  manager@demo.com (Demo Manager)');
     console.log('  Employee: wyatt@demo.com (Wyatt Cooper - Peak Performer)');
     console.log('  Employee: woody@demo.com (Woody Klemetson - Moderate Stress)');
     console.log('  Employee: robert@demo.com (Robert Henderson - High Burnout)');

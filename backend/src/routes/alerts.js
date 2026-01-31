@@ -32,9 +32,15 @@ router.get('/', async (req, res) => {
     const params = [];
     let paramIndex = 1;
 
-    // Filter by role - employees can only see their own alerts
+    // Filter by role
     if (req.user.role === 'employee' && req.user.employeeId) {
+      // Employees can only see their own alerts
       query += ` AND a.employee_id = $${paramIndex}`;
+      params.push(req.user.employeeId);
+      paramIndex++;
+    } else if (req.user.role === 'manager' && req.user.employeeId) {
+      // Managers can only see alerts for their team members
+      query += ` AND e.manager_id = $${paramIndex}`;
       params.push(req.user.employeeId);
       paramIndex++;
     }

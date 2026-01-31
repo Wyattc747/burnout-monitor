@@ -94,12 +94,16 @@ export function TeamManagement() {
     },
   });
 
-  const filteredAvailable = available.filter(
-    (emp) =>
-      emp.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredAvailable = available.filter((emp) => {
+    const query = searchQuery.toLowerCase();
+    const fullName = `${emp.firstName} ${emp.lastName}`.toLowerCase();
+    return (
+      fullName.includes(query) ||
+      emp.email.toLowerCase().includes(query) ||
+      emp.department?.toLowerCase().includes(query) ||
+      emp.jobTitle?.toLowerCase().includes(query)
+    );
+  });
 
   if (loadingMembers) {
     return (
@@ -199,13 +203,17 @@ export function TeamManagement() {
                   </svg>
                 </button>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
                 <input
                   type="text"
-                  placeholder="Search employees..."
+                  placeholder="Search by name, email, department, or title..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  autoFocus
                 />
               </div>
             </div>
@@ -232,7 +240,9 @@ export function TeamManagement() {
                           <p className="font-medium text-gray-900 dark:text-white">
                             {emp.firstName} {emp.lastName}
                           </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{emp.email}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {emp.jobTitle}{emp.department && ` · ${emp.department}`}
+                          </p>
                         </div>
                       </div>
                       <button

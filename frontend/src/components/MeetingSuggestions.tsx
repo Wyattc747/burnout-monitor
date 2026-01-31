@@ -1,6 +1,7 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Avatar } from './Avatar';
 
 interface MeetingSuggestion {
@@ -57,18 +58,25 @@ function formatTime(dateStr: string): string {
 }
 
 export function MeetingSuggestions() {
+  const [scheduledIds, setScheduledIds] = useState<Set<string>>(new Set());
+
   const { data: suggestions = [], isLoading } = useQuery({
     queryKey: ['meeting-suggestions'],
     queryFn: fetchMeetingSuggestions,
   });
 
+  const handleSchedule = (employeeId: string, employeeName: string) => {
+    setScheduledIds(prev => new Set(prev).add(employeeId));
+    // In a real app, this would open a calendar integration or scheduling modal
+  };
+
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm animate-pulse">
-        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-3"></div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm animate-pulse h-full">
+        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+        <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+            <div key={i} className="h-14 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
           ))}
         </div>
       </div>
@@ -77,53 +85,72 @@ export function MeetingSuggestions() {
 
   if (suggestions.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">1:1 Meeting Suggestions</h2>
-        <div className="text-center py-4">
-          <p className="text-gray-500 dark:text-gray-400 text-sm">No meeting suggestions at this time.</p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm h-full">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">1:1 Meeting Suggestions</h2>
+        <div className="text-center py-8">
+          <p className="text-gray-500 dark:text-gray-400">No meeting suggestions at this time.</p>
         </div>
       </div>
     );
   }
 
+  // Sort by urgency
+  const sortedSuggestions = [...suggestions].sort((a, b) => {
+    const urgencyOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
+    return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
+  });
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm h-full">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">1:1 Meeting Suggestions</h2>
-        <span className="text-sm text-gray-500 dark:text-gray-400">
+        <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
           {suggestions.length} suggested
         </span>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {suggestions.map((suggestion) => {
+      <div className="space-y-2">
+        {sortedSuggestions.map((suggestion) => {
           const urgencyStyle = URGENCY_STYLES[suggestion.urgency];
           const zoneColor = suggestion.zone === 'red' ? 'bg-red-500' :
                             suggestion.zone === 'yellow' ? 'bg-amber-500' : 'bg-emerald-500';
+          const reasonLabel = REASON_LABELS[suggestion.reason] || suggestion.reason;
           return (
             <div
               key={suggestion.employeeId}
-              className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+              className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-              <Avatar
-                name={suggestion.employeeName}
-                size="sm"
-              />
+              <div className="relative">
+                <Avatar
+                  name={suggestion.employeeName}
+                  size="sm"
+                />
+                <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 ${zoneColor}`}></span>
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">
-                    {suggestion.employeeName}
-                  </h4>
-                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${zoneColor}`}></span>
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className={`px-1.5 py-0.5 text-xs rounded ${urgencyStyle.bg} ${urgencyStyle.text}`}>
-                    {suggestion.urgency}
+                <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                  {suggestion.employeeName}
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {reasonLabel}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${urgencyStyle.bg} ${urgencyStyle.text}`}>
+                  {suggestion.urgency}
+                </span>
+                {scheduledIds.has(suggestion.employeeId) ? (
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    ✓ Scheduled
                   </span>
-                  <button className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline">
+                ) : (
+                  <button
+                    onClick={() => handleSchedule(suggestion.employeeId, suggestion.employeeName)}
+                    className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
+                  >
                     Schedule
                   </button>
-                </div>
+                )}
               </div>
             </div>
           );

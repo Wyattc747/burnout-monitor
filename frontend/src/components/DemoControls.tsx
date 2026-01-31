@@ -19,8 +19,8 @@ export function DemoControls({ employees }: DemoControlsProps) {
   const triggerAlert = useMutation({
     mutationFn: () => demoApi.triggerAlert(selectedEmployee, targetZone),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['alerts'] });
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      // Invalidate all queries to refresh the entire dashboard
+      queryClient.invalidateQueries();
     },
   });
 
