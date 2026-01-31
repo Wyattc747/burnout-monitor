@@ -36,11 +36,8 @@ export default function AnalyticsPage() {
   };
 
   const totalEmployees = employees?.length || 0;
-  const avgBurnout = totalEmployees > 0
-    ? Math.round(employees!.reduce((sum: number, e: Employee) => sum + (e.burnoutScore || 0), 0) / totalEmployees)
-    : 0;
-  const avgReadiness = totalEmployees > 0
-    ? Math.round(employees!.reduce((sum: number, e: Employee) => sum + (e.readinessScore || 0), 0) / totalEmployees)
+  const avgWellness = totalEmployees > 0
+    ? Math.round(employees!.reduce((sum: number, e: Employee) => sum + (100 - (e.burnoutScore || 0)), 0) / totalEmployees)
     : 0;
 
   return (
@@ -70,18 +67,17 @@ export default function AnalyticsPage() {
           icon="👥"
         />
         <MetricCard
-          label="Avg Burnout Risk"
-          value={avgBurnout}
+          label="Avg Wellness"
+          value={avgWellness}
           suffix="/100"
-          trend={-3}
-          color={avgBurnout > 60 ? 'red' : avgBurnout > 40 ? 'yellow' : 'green'}
+          trend={3}
+          color={avgWellness >= 70 ? 'green' : avgWellness >= 40 ? 'yellow' : 'red'}
         />
         <MetricCard
-          label="Avg Readiness"
-          value={avgReadiness}
-          suffix="/100"
-          trend={5}
-          color={avgReadiness > 70 ? 'green' : avgReadiness > 50 ? 'yellow' : 'red'}
+          label="Peak Performers"
+          value={zoneCounts.green}
+          suffix={`/ ${totalEmployees}`}
+          color="green"
         />
         <MetricCard
           label="At Risk"
@@ -121,7 +117,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Team Patterns */}
-      <TeamPatterns employees={employees || []} />
+      <TeamPatterns />
 
       {/* Recommendations */}
       <div className="card">
@@ -138,10 +134,10 @@ export default function AnalyticsPage() {
               actionHref="/dashboard/team?filter=red"
             />
           )}
-          {avgBurnout > 50 && (
+          {avgWellness < 50 && (
             <RecommendationItem
               type="warning"
-              title="Team burnout risk is elevated"
+              title="Team wellness needs attention"
               description="Consider reviewing project deadlines and workload distribution."
               action="View Analytics"
               actionHref="/dashboard/analytics"

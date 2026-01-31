@@ -24,7 +24,186 @@ interface DualScoreChartProps {
   data: ZoneStatus[];
 }
 
+// Helper to get zone from wellness score
+function getZoneFromScore(score: number): 'green' | 'yellow' | 'red' {
+  if (score >= 70) return 'green';
+  if (score >= 40) return 'yellow';
+  return 'red';
+}
+
+// Helper to get zone color
+function getZoneColor(zone: string): string {
+  switch (zone) {
+    case 'green': return '#22c55e';
+    case 'yellow': return '#f59e0b';
+    case 'red': return '#ef4444';
+    default: return '#6b7280';
+  }
+}
+
 export function DualScoreChart({ data }: DualScoreChartProps) {
+  // Convert to single wellness score (inverse of burnout, weighted with readiness)
+  const chartData = [...data].reverse().map((d) => {
+    // Wellness Score = 100 - burnout (inverted burnout becomes wellness)
+    const wellnessScore = Math.round(100 - (d.burnoutScore || 0));
+    const zone = getZoneFromScore(wellnessScore);
+    return {
+      date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      fullDate: d.date,
+      wellnessScore,
+      zone,
+    };
+  });
+
+  // Calculate stats
+  const latestScore = chartData.length > 0 ? chartData[chartData.length - 1].wellnessScore : 0;
+  const previousScore = chartData.length > 1 ? chartData[chartData.length - 2].wellnessScore : latestScore;
+  const trend = latestScore - previousScore;
+  const avgScore = chartData.length > 0
+    ? Math.round(chartData.reduce((sum, d) => sum + d.wellnessScore, 0) / chartData.length)
+    : 0;
+  const minScore = chartData.length > 0 ? Math.min(...chartData.map(d => d.wellnessScore)) : 0;
+  const maxScore = chartData.length > 0 ? Math.max(...chartData.map(d => d.wellnessScore)) : 100;
+
+  // Custom dot to color based on zone
+  const CustomDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    const color = getZoneColor(payload.zone);
+    return (
+      <circle cx={cx} cy={cy} r={4} fill={color} stroke="white" strokeWidth={2} />
+    );
+  };
+
+  // Custom tooltip
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const score = payload[0].value;
+      const zone = getZoneFromScore(score);
+      const zoneLabel = zone === 'green' ? 'Peak' : zone === 'yellow' ? 'Moderate' : 'At Risk';
+      const fullDate = payload[0].payload.fullDate;
+      return (
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+            {new Date(fullDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          </p>
+          <p className="text-lg font-bold" style={{ color: getZoneColor(zone) }}>
+            {score}%
+          </p>
+          <p className="text-xs" style={{ color: getZoneColor(zone) }}>
+            {zoneLabel} Zone
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const latestZone = getZoneFromScore(latestScore);
+
+  return (
+    <div className="space-y-4">
+      {/* Summary Stats */}
+      <div className="flex items-center justify-between px-2">
+        <div className="flex items-center gap-4">
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Current</p>
+            <p className="text-xl font-bold" style={{ color: getZoneColor(latestZone) }}>
+              {latestScore}%
+            </p>
+          </div>
+          <div className="text-sm">
+            {trend !== 0 && (
+              <span className={trend > 0 ? 'text-emerald-600' : 'text-red-600'}>
+                {trend > 0 ? '↑' : '↓'} {Math.abs(trend)} pts
+              </span>
+            )}
+            {trend === 0 && <span className="text-gray-500">No change</span>}
+          </div>
+        </div>
+        <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400">
+          <div>
+            <span className="block text-gray-400">Avg</span>
+            <span className="font-medium text-gray-700 dark:text-gray-300">{avgScore}%</span>
+          </div>
+          <div>
+            <span className="block text-gray-400">Low</span>
+            <span className="font-medium text-red-500">{minScore}%</span>
+          </div>
+          <div>
+            <span className="block text-gray-400">High</span>
+            <span className="font-medium text-emerald-500">{maxScore}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <ResponsiveContainer width="100%" height={250}>
+        <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+          <defs>
+            <linearGradient id="wellnessGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+              <stop offset="50%" stopColor="#f59e0b" stopOpacity={0.2}/>
+              <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 11 }}
+            stroke="#9ca3af"
+            tickLine={false}
+            axisLine={{ stroke: '#e5e7eb' }}
+          />
+          <YAxis
+            domain={[0, 100]}
+            tick={{ fontSize: 11 }}
+            stroke="#9ca3af"
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(value) => `${value}%`}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          {/* Zone reference lines with labels */}
+          <ReferenceLine y={70} stroke="#22c55e" strokeDasharray="3 3" strokeOpacity={0.7}>
+            <text x="100%" y={70} textAnchor="end" fill="#22c55e" fontSize={10} dy={-5}>Peak</text>
+          </ReferenceLine>
+          <ReferenceLine y={40} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.7}>
+            <text x="100%" y={40} textAnchor="end" fill="#f59e0b" fontSize={10} dy={-5}>Moderate</text>
+          </ReferenceLine>
+          <Area
+            type="monotone"
+            dataKey="wellnessScore"
+            name="Wellness Score"
+            stroke="#3b82f6"
+            strokeWidth={2.5}
+            fill="url(#wellnessGradient)"
+            dot={<CustomDot />}
+            activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+
+      {/* Zone Legend */}
+      <div className="flex items-center justify-center gap-6 text-xs text-gray-500 dark:text-gray-400">
+        <span className="flex items-center gap-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          Peak (70%+)
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+          Moderate (40-69%)
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+          At Risk (&lt;40%)
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Keep old version for backwards compatibility but mark as deprecated
+export function LegacyDualScoreChart({ data }: DualScoreChartProps) {
   const chartData = [...data].reverse().map((d) => ({
     date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     burnoutScore: d.burnoutScore,

@@ -297,51 +297,6 @@ export function TeamWellnessInsights() {
         </div>
       </div>
 
-      {/* Patterns & Recommendations */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-          <span>💡</span>
-          Insights & Recommendations
-        </h3>
-        <div className="space-y-3">
-          {patterns.slice(0, 4).map((pattern, index) => {
-            const style = SEVERITY_STYLES[pattern.severity];
-            return (
-              <div
-                key={index}
-                className={clsx('p-4 rounded-lg border', style.bg)}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="text-xl">{TYPE_ICONS[pattern.type]}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-gray-900 dark:text-white text-sm">{pattern.title}</h4>
-                      <span className={clsx('text-xs px-2 py-0.5 rounded-full', style.badge)}>
-                        {pattern.severity === 'high' ? 'Action Needed' : pattern.severity === 'medium' ? 'Monitor' : 'Info'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">{pattern.description}</p>
-                    {pattern.action && (
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1">
-                        <span>→</span>
-                        {pattern.action}
-                      </p>
-                    )}
-                  </div>
-                  {pattern.affectedCount > 0 && (
-                    <div className="text-right text-xs text-gray-500 dark:text-gray-400 shrink-0">
-                      <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {pattern.affectedCount}
-                      </span>
-                      /{pattern.totalCount}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }

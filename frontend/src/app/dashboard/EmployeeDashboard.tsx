@@ -9,6 +9,8 @@ import { QuickCheckin } from '@/components/FeelingCheckin';
 import { PersonalizationPrompt } from '@/components/PersonalizationPrompt';
 import { SupportBot, SupportBotButton } from '@/components/SupportBot';
 import { SmartRecommendations } from '@/components/SmartRecommendations';
+import { LifeEventsSection } from '@/components/LifeEventsSection';
+import { WellnessMentorPreview } from '@/components/WellnessMentor';
 import { clsx } from 'clsx';
 import {
   TrendingUp,
@@ -118,27 +120,12 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
         )}
       </div>
 
-      {/* Score Summary Cards */}
-      <div className="grid sm:grid-cols-3 gap-4">
-        <ScoreCard
-          label="Burnout Risk"
-          score={employee.burnoutScore ?? 0}
-          trend={burnoutTrend}
-          color="red"
-          invertTrend
-        />
-        <ScoreCard
-          label="Readiness"
-          score={employee.readinessScore ?? 0}
-          trend={(() => {
-            const yesterday = burnoutData?.history?.[1] as any;
-            const yesterdayReadiness = yesterday?.readiness_score ?? yesterday?.readinessScore;
-            return yesterdayReadiness ? (employee.readinessScore || 0) - yesterdayReadiness : 0;
-          })()}
-          color="green"
-        />
-        <ZoneCard zone={employee.zone} />
-      </div>
+      {/* Wellness Score Card */}
+      <WellnessScoreCard
+        score={100 - (employee.burnoutScore ?? 0)}
+        zone={employee.zone}
+        trend={-burnoutTrend}
+      />
 
       {/* Today's Key Insight */}
       {topInsight && (
@@ -181,6 +168,12 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
 
       {/* Smart Recommendations */}
       <SmartRecommendations employeeId={employeeId} compact />
+
+      {/* Life Events & Wellness Mentor */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <LifeEventsSection />
+        <WellnessMentorPreview />
+      </div>
 
       {/* Navigation Cards */}
       <div className="grid sm:grid-cols-3 gap-4">
@@ -282,39 +275,82 @@ function ScoreCard({
   );
 }
 
-function ZoneCard({ zone }: { zone: 'red' | 'yellow' | 'green' }) {
+function WellnessScoreCard({
+  score,
+  zone,
+  trend,
+}: {
+  score: number;
+  zone: 'red' | 'yellow' | 'green';
+  trend: number;
+}) {
   const config = {
     red: {
-      label: 'Burnout Risk',
-      bg: 'bg-red-50 dark:bg-red-900/20',
+      label: 'At Risk',
+      bg: 'bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/30 dark:to-orange-900/20',
       border: 'border-red-200 dark:border-red-800',
-      text: 'text-red-700 dark:text-red-300',
-      icon: '🔴',
+      text: 'text-red-600 dark:text-red-400',
+      barColor: 'bg-red-500',
+      description: 'Your wellness needs attention',
     },
     yellow: {
       label: 'Moderate',
-      bg: 'bg-amber-50 dark:bg-amber-900/20',
+      bg: 'bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/20',
       border: 'border-amber-200 dark:border-amber-800',
-      text: 'text-amber-700 dark:text-amber-300',
-      icon: '🟡',
+      text: 'text-amber-600 dark:text-amber-400',
+      barColor: 'bg-amber-500',
+      description: 'Room for improvement',
     },
     green: {
-      label: 'Peak Ready',
-      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+      label: 'Peak',
+      bg: 'bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/20',
       border: 'border-emerald-200 dark:border-emerald-800',
-      text: 'text-emerald-700 dark:text-emerald-300',
-      icon: '🟢',
+      text: 'text-emerald-600 dark:text-emerald-400',
+      barColor: 'bg-emerald-500',
+      description: 'You\'re doing great!',
     },
   };
 
   const c = config[zone];
+  const isPositive = trend > 0;
+  const isNegative = trend < 0;
 
   return (
-    <div className={clsx('card border', c.bg, c.border)}>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Current Zone</p>
-      <div className="flex items-center gap-2">
-        <span className="text-2xl">{c.icon}</span>
-        <span className={clsx('text-xl font-bold', c.text)}>{c.label}</span>
+    <div className={clsx('card border-2', c.bg, c.border)}>
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Wellness Score</p>
+          <div className="flex items-baseline gap-2">
+            <span className={clsx('text-4xl font-bold', c.text)}>
+              {Math.round(score)}
+            </span>
+            <span className="text-gray-400 dark:text-gray-500 text-lg">/100</span>
+          </div>
+        </div>
+        <div className={clsx('px-3 py-1.5 rounded-full text-sm font-semibold', c.text, c.bg)}>
+          {c.label}
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-3">
+        <div
+          className={clsx('h-full rounded-full transition-all duration-500', c.barColor)}
+          style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-gray-600 dark:text-gray-400">{c.description}</span>
+        {trend !== 0 && (
+          <span className={clsx(
+            'font-medium',
+            isPositive && 'text-emerald-600 dark:text-emerald-400',
+            isNegative && 'text-red-600 dark:text-red-400'
+          )}>
+            {isPositive ? '↑' : '↓'} {Math.abs(Math.round(trend))} pts
+          </span>
+        )}
       </div>
     </div>
   );

@@ -135,21 +135,36 @@ export function ExplainabilityPanel({ employeeId, viewerRole }: ExplainabilityPa
         <ZoneBadge zone={explanation.zone} />
       </div>
 
-      {/* Scores */}
-      <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <div>
-          <p className="text-sm text-gray-500 mb-1">Burnout Risk</p>
-          <p className="text-2xl font-bold text-red-600">
-            {explanation.burnoutScore}
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-500 mb-1">Readiness</p>
-          <p className="text-2xl font-bold text-green-600">
-            {explanation.readinessScore}
-          </p>
-        </div>
-      </div>
+      {/* Wellness Score */}
+      {(() => {
+        const wellnessScore = Math.round(100 - (explanation.burnoutScore || 0));
+        const scoreColor = wellnessScore >= 70 ? 'text-emerald-600 dark:text-emerald-400' :
+                          wellnessScore >= 40 ? 'text-amber-600 dark:text-amber-400' :
+                          'text-red-600 dark:text-red-400';
+        const barColor = wellnessScore >= 70 ? 'bg-emerald-500' :
+                        wellnessScore >= 40 ? 'bg-amber-500' : 'bg-red-500';
+        return (
+          <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Wellness Score</p>
+              <p className={`text-2xl font-bold ${scoreColor}`}>
+                {wellnessScore}<span className="text-base text-gray-400 dark:text-gray-500 font-normal">/100</span>
+              </p>
+            </div>
+            <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${barColor}`}
+                style={{ width: `${wellnessScore}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+              <span>At Risk</span>
+              <span>Moderate</span>
+              <span>Peak</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Interaction Effects - Show compound stress factors */}
       {explanation.context?.interactionEffects && explanation.context.interactionEffects.length > 0 && (

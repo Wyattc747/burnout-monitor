@@ -117,47 +117,45 @@ export default function EmployeeDetailPage() {
       </div>
 
       {/* Status Summary */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div
           className={clsx(
             'card',
-            employee.zone === 'red' && 'ring-2 ring-red-200',
-            employee.zone === 'green' && 'ring-2 ring-green-200'
+            employee.zone === 'red' && 'ring-2 ring-red-200 dark:ring-red-800',
+            employee.zone === 'green' && 'ring-2 ring-green-200 dark:ring-green-800'
           )}
         >
-          <p className="text-sm text-gray-600 mb-1">Current Zone</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Current Zone</p>
           <p
             className={clsx(
               'text-2xl font-bold',
-              employee.zone === 'red' && 'text-red-600',
-              employee.zone === 'yellow' && 'text-yellow-600',
-              employee.zone === 'green' && 'text-green-600'
+              employee.zone === 'red' && 'text-red-600 dark:text-red-400',
+              employee.zone === 'yellow' && 'text-amber-600 dark:text-amber-400',
+              employee.zone === 'green' && 'text-emerald-600 dark:text-emerald-400'
             )}
           >
             {employee.zone === 'red'
-              ? 'Burnout Risk'
+              ? 'At Risk'
               : employee.zone === 'green'
-              ? 'Peak Ready'
+              ? 'Peak'
               : 'Moderate'}
           </p>
         </div>
         <div className="card">
-          <p className="text-sm text-gray-600 mb-1">Burnout Score</p>
-          <p className="text-2xl font-bold text-red-600">
-            {employee.burnoutScore ?? '-'}
-            <span className="text-gray-400 text-base font-normal">/100</span>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Wellness Score</p>
+          <p className={clsx(
+            'text-2xl font-bold',
+            (100 - (employee.burnoutScore ?? 50)) >= 70 && 'text-emerald-600 dark:text-emerald-400',
+            (100 - (employee.burnoutScore ?? 50)) >= 40 && (100 - (employee.burnoutScore ?? 50)) < 70 && 'text-amber-600 dark:text-amber-400',
+            (100 - (employee.burnoutScore ?? 50)) < 40 && 'text-red-600 dark:text-red-400'
+          )}>
+            {Math.round(100 - (employee.burnoutScore ?? 50))}
+            <span className="text-gray-400 dark:text-gray-500 text-base font-normal">/100</span>
           </p>
         </div>
         <div className="card">
-          <p className="text-sm text-gray-600 mb-1">Readiness Score</p>
-          <p className="text-2xl font-bold text-green-600">
-            {employee.readinessScore ?? '-'}
-            <span className="text-gray-400 text-base font-normal">/100</span>
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-gray-600 mb-1">Email</p>
-          <p className="text-lg font-medium text-gray-900 truncate">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Email</p>
+          <p className="text-lg font-medium text-gray-900 dark:text-white truncate">
             {employee.email}
           </p>
         </div>

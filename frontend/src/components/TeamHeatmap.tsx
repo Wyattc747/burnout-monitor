@@ -138,39 +138,47 @@ export function TeamAggregatesCard() {
         <div className="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            Thriving ({aggregates.zoneDistribution.green})
+            Peak ({aggregates.zoneDistribution.green})
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-            At Risk ({aggregates.zoneDistribution.yellow})
+            Moderate ({aggregates.zoneDistribution.yellow})
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-red-500"></span>
-            Burnout ({aggregates.zoneDistribution.red})
+            At Risk ({aggregates.zoneDistribution.red})
           </span>
         </div>
       </div>
 
-      {/* Score Cards */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Avg Readiness</span>
-            {getTrendIcon(trendDisplay === 'declining' ? 'improving' : trendDisplay)}
-          </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {aggregates.averageScores.readiness || 'N/A'}%
-          </div>
+      {/* Wellness Score Card */}
+      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm text-gray-500 dark:text-gray-400">Avg Wellness Score</span>
+          {getTrendIcon(trendDisplay === 'declining' ? 'improving' : trendDisplay)}
         </div>
-        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Avg Burnout Risk</span>
-            {getTrendIcon(trendDisplay === 'improving' ? 'declining' : trendDisplay === 'declining' ? 'improving' : 'stable')}
-          </div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {aggregates.averageScores.burnout || 'N/A'}%
-          </div>
-        </div>
+        {(() => {
+          const avgBurnout = parseFloat(aggregates.averageScores.burnout || '50');
+          const avgWellness = Math.round(100 - avgBurnout);
+          const scoreColor = avgWellness >= 70 ? 'text-emerald-600 dark:text-emerald-400' :
+                            avgWellness >= 40 ? 'text-amber-600 dark:text-amber-400' :
+                            'text-red-600 dark:text-red-400';
+          const barColor = avgWellness >= 70 ? 'bg-emerald-500' :
+                          avgWellness >= 40 ? 'bg-amber-500' : 'bg-red-500';
+          return (
+            <>
+              <div className={`text-2xl font-bold ${scoreColor}`}>
+                {avgWellness}%
+              </div>
+              <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mt-2">
+                <div
+                  className={`h-full rounded-full transition-all ${barColor}`}
+                  style={{ width: `${avgWellness}%` }}
+                />
+              </div>
+            </>
+          );
+        })()}
       </div>
     </div>
   );
@@ -265,11 +273,12 @@ export function TeamHeatmap() {
                       />
                     );
                   }
+                  const wellnessScore = dayData.burnoutScore ? Math.round(100 - dayData.burnoutScore) : null;
                   return (
                     <div
                       key={date}
                       className={`w-6 h-6 rounded ${getZoneColor(dayData.zone)} cursor-pointer transition-transform hover:scale-110`}
-                      title={`${new Date(date).toLocaleDateString()}: ${dayData.zone} zone${dayData.burnoutScore ? `, burnout: ${dayData.burnoutScore.toFixed(0)}` : ''}`}
+                      title={`${new Date(date).toLocaleDateString()}: ${dayData.zone === 'green' ? 'Peak' : dayData.zone === 'yellow' ? 'Moderate' : 'At Risk'}${wellnessScore ? `, wellness: ${wellnessScore}%` : ''}`}
                     />
                   );
                 })}
@@ -283,15 +292,15 @@ export function TeamHeatmap() {
       <div className="flex items-center gap-4 mt-4 text-xs text-gray-500 dark:text-gray-400">
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded bg-emerald-500"></span>
-          Green (Thriving)
+          Peak (70%+)
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded bg-amber-500"></span>
-          Yellow (At Risk)
+          Moderate (40-69%)
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded bg-red-500"></span>
-          Red (Burnout)
+          At Risk (&lt;40%)
         </span>
       </div>
     </div>

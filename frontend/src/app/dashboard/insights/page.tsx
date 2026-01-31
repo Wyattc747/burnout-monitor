@@ -66,29 +66,29 @@ export default function InsightsPage() {
       {/* Quick Summary Cards */}
       <div className="grid sm:grid-cols-3 gap-4">
         <SummaryCard
-          label="Current Burnout Risk"
-          value={employee?.burnoutScore ?? '-'}
+          label="Wellness Score"
+          value={Math.round(100 - (employee?.burnoutScore ?? 50))}
           subtext="/100"
           trend={(() => {
             const yesterday = burnoutData?.history?.[1] as any;
-            const score = yesterday?.burnout_score ?? yesterday?.burnoutScore;
-            return score ? (employee?.burnoutScore || 0) - score : 0;
+            const yesterdayBurnout = yesterday?.burnout_score ?? yesterday?.burnoutScore;
+            const currentWellness = 100 - (employee?.burnoutScore || 0);
+            const yesterdayWellness = yesterdayBurnout ? 100 - yesterdayBurnout : currentWellness;
+            return Math.round(currentWellness - yesterdayWellness);
           })()}
           trendLabel="vs yesterday"
-          color="red"
+          color={(() => {
+            const score = 100 - (employee?.burnoutScore ?? 50);
+            if (score >= 70) return 'green';
+            if (score >= 40) return 'blue';
+            return 'red';
+          })()}
+          invertTrend
         />
         <SummaryCard
-          label="Readiness Score"
-          value={employee?.readinessScore ?? '-'}
-          subtext="/100"
-          trend={(() => {
-            const yesterday = burnoutData?.history?.[1] as any;
-            const score = yesterday?.readiness_score ?? yesterday?.readinessScore;
-            return score ? (employee?.readinessScore || 0) - score : 0;
-          })()}
-          trendLabel="vs yesterday"
-          color="green"
-          invertTrend
+          label="Current Zone"
+          value={employee?.zone === 'green' ? 'Peak' : employee?.zone === 'yellow' ? 'Moderate' : 'At Risk'}
+          color={employee?.zone === 'green' ? 'green' : employee?.zone === 'yellow' ? 'blue' : 'red'}
         />
         <SummaryCard
           label="Days in Current Zone"

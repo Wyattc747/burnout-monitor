@@ -121,32 +121,96 @@ export function ManagerDashboard() {
 
       {/* Employees Needing Attention */}
       {employeesNeedingAttention.length > 0 && (
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="font-semibold text-gray-900 dark:text-white">
-                Needs Attention
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Team members in the burnout risk zone
-              </p>
+        <div className="card border-l-4 border-red-500 bg-gradient-to-r from-red-50 to-white dark:from-red-900/10 dark:to-gray-800">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-gray-900 dark:text-white">
+                  Needs Attention
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {employeesNeedingAttention.length} team member{employeesNeedingAttention.length > 1 ? 's' : ''} at risk of burnout
+                </p>
+              </div>
             </div>
             <Link
               href="/dashboard/team?filter=red"
-              className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              className="btn btn-ghost text-sm flex items-center gap-1"
             >
               View All <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {employeesNeedingAttention.slice(0, 3).map((employee: Employee) => (
-              <EmployeeCard
-                key={employee.id}
-                employee={employee}
-                onClick={() => router.push(`/dashboard/employee/${employee.id}`)}
-                compact
-              />
-            ))}
+          <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+            {employeesNeedingAttention.slice(0, 3).map((employee: Employee) => {
+              const wellnessScore = 100 - (employee.burnoutScore || 0);
+              return (
+                <div
+                  key={employee.id}
+                  className="relative bg-white dark:bg-gray-800 rounded-xl border border-red-200 dark:border-red-800 shadow-sm hover:shadow-md transition-all overflow-hidden"
+                >
+                  {/* Top colored bar */}
+                  <div className="h-1 bg-gradient-to-r from-red-500 to-orange-500" />
+
+                  <div className="p-4">
+                    {/* Header with avatar and info */}
+                    <div
+                      className="flex items-start gap-3 cursor-pointer mb-4"
+                      onClick={() => router.push(`/dashboard/employee/${employee.id}`)}
+                    >
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-semibold shadow-lg">
+                          {employee.firstName[0]}{employee.lastName[0]}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-gray-800" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 dark:text-white truncate">
+                          {employee.firstName} {employee.lastName}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                          {employee.jobTitle}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Wellness Score */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Wellness Score</span>
+                        <span className="text-sm font-bold text-red-600 dark:text-red-400">{wellnessScore}%</span>
+                      </div>
+                      <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full transition-all"
+                          style={{ width: `${wellnessScore}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/dashboard/meetings?employee=${employee.id}`}
+                        className="flex-1 btn btn-sm bg-red-600 hover:bg-red-700 text-white border-0 justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Calendar className="w-4 h-4 mr-1.5" />
+                        Schedule 1:1
+                      </Link>
+                      <button
+                        onClick={() => router.push(`/dashboard/employee/${employee.id}`)}
+                        className="btn btn-sm btn-ghost px-3"
+                      >
+                        View
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
