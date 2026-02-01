@@ -6,8 +6,5 @@
     "start": "cd backend && npm start",
     "build": "cd backend && npm install",
     "heroku-postbuild": "cd backend && npm install"
-  },
-  "engines": {
-    "node": "18.x"
   }
 }
