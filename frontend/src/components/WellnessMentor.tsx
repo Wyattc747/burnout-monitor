@@ -494,10 +494,22 @@ export function WellnessMentorDemo({ onClose }: { onClose: () => void }) {
 }
 
 // Simulated user context for demo
-const DEMO_USER_CONTEXT = {
+const DEMO_USER_CONTEXT: {
+  name: string;
+  wellnessScore: number;
+  zone: 'green' | 'yellow' | 'red';
+  sleepHours: number;
+  sleepTarget: number;
+  hrv: number;
+  steps: number;
+  stepsGoal: number;
+  workHours: number;
+  streakDays: number;
+  topFactors: string[];
+} = {
   name: 'Sarah',
   wellnessScore: 62,
-  zone: 'yellow' as const,
+  zone: 'yellow',
   sleepHours: 6.2,
   sleepTarget: 7.5,
   hrv: 38,
