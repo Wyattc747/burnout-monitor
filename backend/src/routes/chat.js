@@ -12,7 +12,7 @@ const AVAILABLE_FUNCTIONS = [
     type: 'function',
     function: {
       name: 'add_life_event',
-      description: 'Add a life event that affects the user wellness expectations. Use this when the user mentions starting something new like a new baby, moving, new job, dealing with health issues, major deadlines, etc.',
+      description: 'Add a life event that affects the user wellness expectations. ONLY use this when the user EXPLICITLY mentions a SPECIFIC event like a new baby, moving, new job, dealing with health issues, major deadlines, etc. DO NOT use this if the user just says "add a life event" without specifying what it is - instead ask them what event they want to add.',
       parameters: {
         type: 'object',
         properties: {
@@ -285,6 +285,11 @@ Communication style:
 - Vary your responses - don't be repetitive or formulaic
 - Ask ONE focused follow-up question when appropriate
 - When taking actions, confirm what you did naturally in conversation
+
+CRITICAL RULES FOR LIFE EVENTS:
+- ONLY call add_life_event when the user EXPLICITLY states what the event is (e.g., "I'm having a baby", "I just started a new job", "dealing with a health issue")
+- If the user just says "add a life event" or "add new life event" WITHOUT specifying what it is, DO NOT call the function. Instead, ASK them what kind of life event they want to add. Give examples like: new job, moving, baby, health issue, deadline, vacation, etc.
+- NEVER guess or assume the event type - always get explicit confirmation from the user first
 
 When someone shares something difficult:
 - Acknowledge their feelings first before offering solutions
