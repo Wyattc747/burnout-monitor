@@ -754,10 +754,38 @@ export const challengesApi = {
 };
 
 // Goals API
+// Helper to map backend goal to frontend Goal type
+const mapBackendGoal = (backendGoal: any): Goal => {
+  const goalTypeConfig: Record<string, { title: string; unit: string }> = {
+    sleep_hours: { title: 'Sleep Goal', unit: 'hours' },
+    exercise_minutes: { title: 'Exercise Goal', unit: 'minutes' },
+    green_zone: { title: 'Green Zone Streak', unit: 'days' },
+    checkin_streak: { title: 'Check-in Streak', unit: 'days' },
+    steps: { title: 'Steps Goal', unit: 'steps' },
+    focus: { title: 'Focus Goal', unit: 'hours' },
+  };
+  const config = goalTypeConfig[backendGoal.goalType] || { title: 'Goal', unit: 'units' };
+
+  return {
+    id: backendGoal.id,
+    type: backendGoal.goalType as GoalType,
+    title: config.title,
+    description: '',
+    targetValue: parseFloat(backendGoal.targetValue) || 0,
+    currentValue: parseFloat(backendGoal.currentValue) || 0,
+    unit: config.unit,
+    startDate: backendGoal.createdAt,
+    endDate: backendGoal.deadline,
+    isActive: backendGoal.status === 'active',
+    createdAt: backendGoal.createdAt,
+    updatedAt: backendGoal.updatedAt,
+  };
+};
+
 export const goalsApi = {
   getAll: async (): Promise<Goal[]> => {
     const { data } = await api.get('/goals');
-    return data;
+    return data.map(mapBackendGoal);
   },
 
   create: async (goal: {
@@ -768,8 +796,13 @@ export const goalsApi = {
     unit: string;
     endDate?: string;
   }): Promise<Goal> => {
-    const { data } = await api.post('/goals', goal);
-    return data;
+    // Map frontend fields to backend expected fields
+    const { data } = await api.post('/goals', {
+      goalType: goal.type,
+      targetValue: goal.targetValue,
+      deadline: goal.endDate,
+    });
+    return mapBackendGoal(data);
   },
 
   update: async (id: string, updates: {
@@ -780,8 +813,15 @@ export const goalsApi = {
     endDate?: string;
     isActive?: boolean;
   }): Promise<Goal> => {
-    const { data } = await api.put(`/goals/${id}`, updates);
-    return data;
+    // Map frontend fields to backend expected fields
+    const backendUpdates: any = {};
+    if (updates.targetValue !== undefined) backendUpdates.targetValue = updates.targetValue;
+    if (updates.currentValue !== undefined) backendUpdates.currentValue = updates.currentValue;
+    if (updates.endDate !== undefined) backendUpdates.deadline = updates.endDate;
+    if (updates.isActive !== undefined) backendUpdates.status = updates.isActive ? 'active' : 'completed';
+
+    const { data } = await api.put(`/goals/${id}`, backendUpdates);
+    return mapBackendGoal(data);
   },
 
   delete: async (id: string): Promise<void> => {

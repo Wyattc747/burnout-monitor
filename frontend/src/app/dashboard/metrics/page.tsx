@@ -12,10 +12,11 @@ import { clsx } from 'clsx';
 type MetricTab = 'overview' | 'sleep' | 'heart' | 'activity' | 'work' | 'email';
 
 export default function MetricsPage() {
-  const { user, isLoading: authLoading } = useRequireAuth();
+  const { user, employeeId: authEmployeeId, isLoading: authLoading } = useRequireAuth();
   const [activeTab, setActiveTab] = useState<MetricTab>('overview');
   const [timeRange, setTimeRange] = useState<7 | 14 | 30>(14);
-  const employeeId = user?.employee?.id;
+  // Use auth employeeId or fall back to user.employee.id
+  const employeeId = authEmployeeId || user?.employee?.id;
 
   const { data: healthMetrics, isLoading: loadingHealth } = useQuery({
     queryKey: ['health', employeeId, timeRange],
@@ -139,6 +140,7 @@ export default function MetricsPage() {
               label="Avg HRV"
               value={avgHRV.toFixed(0)}
               unit="ms"
+              target={50}
               color="red"
             />
             <MetricCard

@@ -149,6 +149,7 @@ export default function BusinessSignupPage() {
         industry: formData.industry || undefined,
         companySize: formData.companySize || undefined,
         subdomain: formData.subdomain || undefined,
+        selectedTier: formData.selectedTier as any,
       });
       // registerOrganization handles redirect
     } catch (err: any) {

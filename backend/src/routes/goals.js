@@ -5,7 +5,7 @@ const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 
 // Valid goal types
-const VALID_GOAL_TYPES = ['sleep', 'exercise', 'green_zone', 'checkin_streak'];
+const VALID_GOAL_TYPES = ['sleep', 'exercise', 'green_zone', 'checkin_streak', 'sleep_hours', 'exercise_minutes', 'steps', 'focus'];
 const VALID_STATUSES = ['active', 'completed', 'abandoned'];
 
 // All routes require authentication

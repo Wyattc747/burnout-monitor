@@ -354,7 +354,7 @@ export function WellnessMentorDemo({ onClose }: { onClose: () => void }) {
           <div className="absolute top-6 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-full z-10" />
 
           {/* Screen */}
-          <div className="bg-gray-100 dark:bg-gray-900 rounded-[2.5rem] overflow-hidden h-[700px] flex flex-col">
+          <div className="bg-gray-100 dark:bg-gray-900 rounded-[2.5rem] overflow-hidden h-[600px] flex flex-col">
             {/* Status Bar */}
             <div className="flex items-center justify-between px-8 py-2 bg-white dark:bg-gray-800">
               <span className="text-sm font-semibold">9:41</span>

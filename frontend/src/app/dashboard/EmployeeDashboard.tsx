@@ -237,7 +237,7 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
 
 function WellnessScoreCard({
   score,
-  zone,
+  zone: _zone,
   trend,
 }: {
   score: number;
@@ -271,6 +271,8 @@ function WellnessScoreCard({
     },
   };
 
+  // Derive zone from score to ensure consistency
+  const zone: 'red' | 'yellow' | 'green' = score >= 70 ? 'green' : score >= 40 ? 'yellow' : 'red';
   const c = config[zone];
   const isPositive = trend > 0;
   const isNegative = trend < 0;

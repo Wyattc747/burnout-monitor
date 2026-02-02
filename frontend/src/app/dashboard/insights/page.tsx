@@ -10,8 +10,9 @@ import { ZoneBadge } from '@/components/ZoneIndicator';
 import Link from 'next/link';
 
 export default function InsightsPage() {
-  const { user, isLoading: authLoading } = useRequireAuth();
-  const employeeId = user?.employee?.id;
+  const { user, employeeId: authEmployeeId, isLoading: authLoading } = useRequireAuth();
+  // Use auth employeeId or fall back to user.employee.id
+  const employeeId = authEmployeeId || user?.employee?.id;
 
   const { data: employee, isLoading: loadingEmployee, error: employeeError } = useQuery({
     queryKey: ['employee', employeeId],
@@ -78,7 +79,7 @@ export default function InsightsPage() {
       <div className="grid sm:grid-cols-3 gap-4">
         <SummaryCard
           label="Wellness Score"
-          value={Math.round(100 - (employee?.burnoutScore ?? 50))}
+          value={Math.round(100 - (employee?.burnoutScore ?? 0))}
           subtext="/100"
           trend={(() => {
             const yesterday = burnoutData?.history?.[1] as any;
@@ -89,7 +90,7 @@ export default function InsightsPage() {
           })()}
           trendLabel="vs yesterday"
           color={(() => {
-            const score = 100 - (employee?.burnoutScore ?? 50);
+            const score = 100 - (employee?.burnoutScore ?? 0);
             if (score >= 70) return 'green';
             if (score >= 40) return 'blue';
             return 'red';

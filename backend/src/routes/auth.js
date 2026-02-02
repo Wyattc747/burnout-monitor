@@ -5,6 +5,7 @@ const db = require('../utils/db');
 const { authenticate, generateToken } = require('../middleware/auth');
 const { validate, loginSchema, registerSchema } = require('../middleware/validate');
 const { logAuditAction } = require('../middleware/tenant');
+const billingService = require('../services/billing');
 
 const router = express.Router();
 
@@ -196,6 +197,7 @@ router.post('/register-organization', async (req, res) => {
       industry,
       companySize,
       subdomain, // Optional custom subdomain
+      selectedTier = 'trial', // Default to trial if not specified
     } = req.body;
 
     // Validation
@@ -259,16 +261,26 @@ router.post('/register-organization', async (req, res) => {
     // Begin transaction
     await client.query('BEGIN');
 
-    // Calculate trial end date (14 days from now)
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+    // Get tier info for the selected tier
+    const tierInfo = billingService.getTierInfo(selectedTier);
+    const validTier = ['trial', 'starter', 'professional', 'enterprise'].includes(selectedTier) ? selectedTier : 'trial';
+
+    // Calculate trial end date (14 days from now) - only for trial tier
+    const trialEndsAt = validTier === 'trial' ? new Date() : null;
+    if (trialEndsAt) {
+      trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+    }
+
+    // Determine subscription status based on tier
+    const subscriptionStatus = validTier === 'trial' ? 'trialing' : 'active';
+    const maxEmployees = tierInfo.maxEmployees === Infinity ? 999999 : tierInfo.maxEmployees;
 
     // Create organization
     const orgResult = await client.query(
       `INSERT INTO organizations (name, slug, domain, industry, company_size, subscription_tier, subscription_status, trial_ends_at, max_employees)
-       VALUES ($1, $2, $3, $4, $5, 'trial', 'trialing', $6, 10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id, name, slug, subscription_tier, trial_ends_at`,
-      [companyName.trim(), slug, emailDomain, industry || null, companySize || null, trialEndsAt]
+      [companyName.trim(), slug, emailDomain, industry || null, companySize || null, validTier, subscriptionStatus, trialEndsAt, maxEmployees]
     );
 
     const org = orgResult.rows[0];

@@ -293,7 +293,7 @@ export default function AdminDashboardPage() {
             </p>
           </div>
           <Link
-            href="/admin/employees?filter=alerts"
+            href="/dashboard/alerts"
             className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline"
           >
             View all

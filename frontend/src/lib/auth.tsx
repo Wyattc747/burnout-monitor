@@ -394,6 +394,7 @@ export function useRequireAuth(options?: {
     refreshUser,
     hasPermission,
     hasAllPermissions,
+    employeeId,
   } = useAuth();
   const router = useRouter();
 
@@ -431,7 +432,7 @@ export function useRequireAuth(options?: {
     }
   }, [isLoading, isAuthenticated, user, options, router, hasPermission, hasAllPermissions]);
 
-  return { user, isLoading, isAuthenticated, refreshUser };
+  return { user, isLoading, isAuthenticated, refreshUser, employeeId };
 }
 
 // Hook for admin pages

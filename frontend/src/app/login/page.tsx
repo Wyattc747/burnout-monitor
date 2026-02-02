@@ -156,7 +156,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => {
                     setEmail(account.email);
-                    setPassword('demo123');
+                    setPassword('password123');
                     setFieldErrors({});
                     setTouched({});
                   }}

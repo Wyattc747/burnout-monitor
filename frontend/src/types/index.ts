@@ -409,6 +409,7 @@ export interface RegisterOrganizationData {
   industry?: string;
   companySize?: string;
   subdomain?: string;
+  selectedTier?: SubscriptionTier;
 }
 
 export interface AcceptInvitationData {

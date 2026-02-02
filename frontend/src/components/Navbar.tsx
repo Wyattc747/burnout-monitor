@@ -46,7 +46,7 @@ export function Navbar() {
               <MobileMenuButton onClick={() => setShowMobileMenu(true)} />
 
               {/* Logo */}
-              <Link href="/dashboard" className="flex items-center">
+              <Link href="/dashboard" className="flex-shrink-0 flex items-center">
                 <LogoFull className="h-8" />
               </Link>
 
@@ -82,14 +82,6 @@ export function Navbar() {
                     Wellness
                   </NavLink>
                 )}
-                <NavLink href="/settings" active={pathname === '/settings'} icon={<Settings className="w-4 h-4" />}>
-                  Settings
-                </NavLink>
-                {isAdmin && (
-                  <NavLink href="/admin/dashboard" active={pathname?.startsWith('/admin') || false} icon={<Shield className="w-4 h-4" />}>
-                    Admin
-                  </NavLink>
-                )}
               </div>
             </div>
 
@@ -104,21 +96,21 @@ export function Navbar() {
 
               {/* Alert Badge */}
               {unacknowledgedCount > 0 && (
-                <div className="hidden sm:block">
-                  <span className="badge-red flex items-center gap-1.5 px-3 py-1">
+                <Link href="/dashboard/alerts" className="hidden sm:block">
+                  <span className="badge-red flex items-center gap-1.5 px-3 py-1 cursor-pointer hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors">
                     <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                     {unacknowledgedCount} alert{unacknowledgedCount > 1 ? 's' : ''}
                   </span>
-                </div>
+                </Link>
               )}
 
               {/* Mobile alert indicator */}
               {unacknowledgedCount > 0 && (
-                <div className="sm:hidden relative">
+                <Link href="/dashboard/alerts" className="sm:hidden relative">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold">
                     {unacknowledgedCount}
                   </span>
-                </div>
+                </Link>
               )}
 
               {/* Theme Toggle - Desktop */}
