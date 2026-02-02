@@ -13,6 +13,7 @@ const profileRoutes = require('./routes/profile');
 const personalizationRoutes = require('./routes/personalization');
 const teamsRoutes = require('./routes/teams');
 const wellnessRoutes = require('./routes/wellness');
+const chatRoutes = require('./routes/chat');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -48,6 +49,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/personalization', personalizationRoutes);
 app.use('/api/teams', teamsRoutes);
 app.use('/api/wellness', wellnessRoutes);
+app.use('/api/chat', chatRoutes);
 
 // 404 handler
 app.use((req, res) => {

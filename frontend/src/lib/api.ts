@@ -528,4 +528,16 @@ export const emailMetricsApi = {
   },
 };
 
+// Chat API
+export const chatApi = {
+  sendMessage: async (message: string, conversationHistory: { type: string; content: string }[] = []): Promise<{
+    response: string;
+    zone: string;
+    fallback?: boolean;
+  }> => {
+    const { data } = await api.post('/chat', { message, conversationHistory });
+    return data;
+  },
+};
+
 export default api;

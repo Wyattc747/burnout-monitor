@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { clsx } from 'clsx';
-import { employeesApi } from '@/lib/api';
+import { employeesApi, chatApi } from '@/lib/api';
 import type { Zone } from '@/types';
 
 interface Message {
@@ -151,19 +151,40 @@ export function SupportBot({ employeeId, isOpen, onClose }: SupportBotProps) {
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
 
-    // Simulate typing delay
+    // Show typing indicator
     setIsTyping(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 1000));
-    setIsTyping(false);
 
-    // Add bot response
-    const botResponse: Message = {
-      id: (Date.now() + 1).toString(),
-      type: 'bot',
-      content: generateBotResponse(message, zone),
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, botResponse]);
+    try {
+      // Build conversation history for context
+      const conversationHistory = messages.map((m) => ({
+        type: m.type,
+        content: m.content,
+      }));
+
+      // Call the AI chat API
+      const response = await chatApi.sendMessage(message, conversationHistory);
+
+      // Add bot response
+      const botResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'bot',
+        content: response.response,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, botResponse]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      // Fall back to rule-based response on error
+      const botResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'bot',
+        content: generateBotResponse(message, zone),
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, botResponse]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const handleQuickReply = (reply: typeof quickReplies[0]) => {

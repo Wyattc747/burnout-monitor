@@ -196,6 +196,173 @@ async function seed() {
         INSERT INTO notification_preferences (user_id, sms_enabled, sms_on_burnout, sms_on_opportunity)
         VALUES ($1, false, true, true)
       `, [userId]);
+
+      // Get the latest zone for this employee
+      const latestZone = await db.query(`
+        SELECT zone, burnout_score FROM zone_history
+        WHERE employee_id = $1
+        ORDER BY date DESC LIMIT 1
+      `, [employeeId]);
+
+      const currentZone = latestZone.rows[0]?.zone || 'yellow';
+      const burnoutScore = latestZone.rows[0]?.burnout_score || 50;
+
+      // Create predictive alerts based on zone
+      if (currentZone === 'red' || burnoutScore > 65) {
+        await db.query(`
+          INSERT INTO predictive_alerts (
+            employee_id, alert_type, severity, title, message,
+            confidence, days_until_predicted, recommendations, is_acknowledged
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false)
+        `, [
+          employeeId,
+          'burnout_risk',
+          'high',
+          'Burnout Risk Detected',
+          `Based on recent patterns, ${profile.firstName} shows elevated burnout indicators. Sleep quality and work hours suggest intervention may be needed.`,
+          0.85,
+          7,
+          JSON.stringify([
+            'Schedule a 1:1 check-in',
+            'Review current workload and priorities',
+            'Encourage taking PTO if available',
+            'Consider redistributing urgent tasks'
+          ])
+        ]);
+      } else if (currentZone === 'yellow') {
+        await db.query(`
+          INSERT INTO predictive_alerts (
+            employee_id, alert_type, severity, title, message,
+            confidence, days_until_predicted, recommendations, is_acknowledged
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false)
+        `, [
+          employeeId,
+          'declining_trend',
+          'medium',
+          'Declining Wellness Trend',
+          `${profile.firstName}'s wellness metrics have been gradually declining over the past week. Early intervention recommended.`,
+          0.72,
+          14,
+          JSON.stringify([
+            'Monitor sleep patterns',
+            'Check in about workload',
+            'Suggest wellness resources'
+          ])
+        ]);
+      } else {
+        await db.query(`
+          INSERT INTO predictive_alerts (
+            employee_id, alert_type, severity, title, message,
+            confidence, days_until_predicted, recommendations, is_acknowledged
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false)
+        `, [
+          employeeId,
+          'recovery_opportunity',
+          'low',
+          'Peak Performance Window',
+          `${profile.firstName} is in an optimal state. This is a great time for challenging projects or learning opportunities.`,
+          0.90,
+          null,
+          JSON.stringify([
+            'Assign stretch goals',
+            'Encourage mentoring others',
+            'Consider high-visibility projects'
+          ])
+        ]);
+      }
+
+      // Create detected patterns
+      const patternTypes = [
+        {
+          type: 'correlation',
+          title: 'Sleep-Productivity Correlation',
+          description: `${profile.firstName}'s productivity increases by 23% on days following 7+ hours of sleep.`,
+          factors: ['sleep_hours', 'tasks_completed'],
+          impact: 'positive'
+        },
+        {
+          type: 'trend',
+          title: 'Meeting Load Increasing',
+          description: `Meeting hours have increased 15% over the past 2 weeks, potentially impacting focus time.`,
+          factors: ['meeting_hours', 'focus_time'],
+          impact: 'negative'
+        },
+        {
+          type: 'anomaly',
+          title: 'Unusual Work Hours Pattern',
+          description: `${profile.firstName} has been logging in earlier and staying later than their baseline.`,
+          factors: ['first_login_time', 'last_logout_time'],
+          impact: 'negative'
+        },
+        {
+          type: 'prediction',
+          title: 'Recovery Predicted',
+          description: `Based on improving sleep metrics, wellness score expected to improve within 5 days.`,
+          factors: ['sleep_quality', 'hrv'],
+          impact: 'positive'
+        }
+      ];
+
+      // Add 1-2 random patterns per employee
+      const numPatterns = Math.floor(Math.random() * 2) + 1;
+      const shuffledPatterns = patternTypes.sort(() => Math.random() - 0.5).slice(0, numPatterns);
+
+      for (const pattern of shuffledPatterns) {
+        await db.query(`
+          INSERT INTO detected_patterns (
+            employee_id, pattern_type, title, description, factors,
+            confidence, impact, time_period, is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+        `, [
+          employeeId,
+          pattern.type,
+          pattern.title,
+          pattern.description,
+          JSON.stringify(pattern.factors),
+          (Math.random() * 0.3 + 0.65).toFixed(2),
+          pattern.impact,
+          '14 days',
+        ]);
+      }
+
+      // Create meeting suggestion for manager
+      const urgencyByZone = { red: 'urgent', yellow: 'normal', green: 'low' };
+      const reasonByZone = {
+        red: `${profile.firstName} is showing burnout indicators and may benefit from support.`,
+        yellow: `Regular check-in recommended for ${profile.firstName} to maintain wellness.`,
+        green: `${profile.firstName} is performing well - great time to discuss growth opportunities.`
+      };
+
+      // Generate suggested meeting times (next 3 business days at 10am, 2pm, 4pm)
+      const suggestedTimes = [];
+      const now = new Date();
+      let daysAdded = 0;
+      while (suggestedTimes.length < 3 && daysAdded < 7) {
+        const date = new Date(now);
+        date.setDate(date.getDate() + daysAdded + 1);
+        if (date.getDay() !== 0 && date.getDay() !== 6) {
+          suggestedTimes.push(new Date(date.setHours(10, 0, 0, 0)).toISOString());
+          if (suggestedTimes.length < 3) {
+            suggestedTimes.push(new Date(date.setHours(14, 0, 0, 0)).toISOString());
+          }
+        }
+        daysAdded++;
+      }
+
+      await db.query(`
+        INSERT INTO meeting_suggestions (
+          manager_id, employee_id, suggested_reason, urgency,
+          suggested_times, status
+        ) VALUES ($1, $2, $3, $4, $5, 'pending')
+      `, [
+        managerEmployeeId,
+        employeeId,
+        reasonByZone[currentZone],
+        urgencyByZone[currentZone],
+        JSON.stringify(suggestedTimes)
+      ]);
+
+      console.log(`    Added alerts, patterns, and meeting suggestions`);
     }
 
     console.log('\n✅ Database seeded successfully!');
