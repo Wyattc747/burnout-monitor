@@ -534,6 +534,10 @@ export const chatApi = {
     response: string;
     zone: string;
     fallback?: boolean;
+    action?: {
+      type: string;
+      result: Record<string, unknown>;
+    };
   }> => {
     const { data } = await api.post('/chat', { message, conversationHistory });
     return data;
