@@ -118,10 +118,12 @@ export function LogoFull({ className, dark = false }: { className?: string; dark
         alt="ShepHerd"
         className="h-10 w-auto object-contain"
       />
-      <span className={clsx(
-        'text-xl font-bold tracking-tight',
-        dark ? 'text-white' : 'text-gray-900 dark:text-white'
-      )}>
+      <span
+        className={clsx(
+          'text-xl font-bold tracking-tight',
+          dark ? 'text-white' : 'text-gray-900 dark:text-white'
+        )}
+      >
         ShepHerd
       </span>
     </div>
