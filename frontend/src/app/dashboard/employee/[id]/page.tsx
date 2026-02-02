@@ -9,7 +9,6 @@ import { ZoneBadge } from '@/components/ZoneIndicator';
 import { ExplainabilityPanel } from '@/components/ExplainabilityPanel';
 import { AlertCard } from '@/components/AlertCard';
 import { DualScoreChart, WorkMetricsChart, WorkBreakdownChart } from '@/components/Charts';
-import { SupportBot, SupportBotButton } from '@/components/SupportBot';
 import { CommunicationMetrics, WorkPatterns, WellnessIndicators, WeeklyTrends } from '@/components/EmployeeMetrics';
 import { clsx } from 'clsx';
 
@@ -19,7 +18,6 @@ export default function EmployeeDetailPage() {
   const queryClient = useQueryClient();
   const employeeId = params?.id as string;
   const [metricsTab, setMetricsTab] = useState<'hours' | 'tasks' | 'breakdown'>('hours');
-  const [isBotOpen, setIsBotOpen] = useState(false);
 
   // Only managers can access this page
   const { user, isLoading: authLoading } = useRequireAuth('manager');
@@ -253,16 +251,6 @@ export default function EmployeeDetailPage() {
         )}
       </div>
 
-      {/* Support Bot for Managers */}
-      {isBotOpen ? (
-        <SupportBot
-          employeeId={employeeId}
-          isOpen={isBotOpen}
-          onClose={() => setIsBotOpen(false)}
-        />
-      ) : (
-        <SupportBotButton onClick={() => setIsBotOpen(true)} />
-      )}
     </div>
   );
 }

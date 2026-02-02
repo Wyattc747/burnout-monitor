@@ -7,7 +7,6 @@ import { employeesApi, personalizationApi, alertsApi } from '@/lib/api';
 import { ZoneBadge } from '@/components/ZoneIndicator';
 import { QuickCheckin } from '@/components/FeelingCheckin';
 import { PersonalizationPrompt } from '@/components/PersonalizationPrompt';
-import { SupportBot, SupportBotButton } from '@/components/SupportBot';
 import { SmartRecommendations } from '@/components/SmartRecommendations';
 import { LifeEventsSection } from '@/components/LifeEventsSection';
 import { WellnessMentorPreview } from '@/components/WellnessMentor';
@@ -28,8 +27,6 @@ interface EmployeeDashboardProps {
 }
 
 export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
-  const [isBotOpen, setIsBotOpen] = useState(false);
-
   const { data: employee, isLoading: loadingEmployee } = useQuery({
     queryKey: ['employee', employeeId],
     queryFn: () => employeesApi.getById(employeeId),
@@ -216,17 +213,6 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
           View Profile
         </Link>
       </div>
-
-      {/* Support Bot */}
-      {isBotOpen ? (
-        <SupportBot
-          employeeId={employeeId}
-          isOpen={isBotOpen}
-          onClose={() => setIsBotOpen(false)}
-        />
-      ) : (
-        <SupportBotButton onClick={() => setIsBotOpen(true)} />
-      )}
     </div>
   );
 }
