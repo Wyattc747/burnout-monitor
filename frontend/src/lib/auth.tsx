@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    let isMounted = true;
     const token = localStorage.getItem('token');
     const storedEmployeeId = localStorage.getItem('employeeId');
 
@@ -50,20 +51,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) {
       authApi.getMe()
         .then((data) => {
-          setState({
-            user: data,
-            isLoading: false,
-            isAuthenticated: true,
-          });
+          if (isMounted) {
+            setState({
+              user: data,
+              isLoading: false,
+              isAuthenticated: true,
+            });
+          }
         })
         .catch(() => {
-          localStorage.removeItem('token');
-          localStorage.removeItem('employeeId');
-          setState({
-            user: null,
-            isLoading: false,
-            isAuthenticated: false,
-          });
+          if (isMounted) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('employeeId');
+            setState({
+              user: null,
+              isLoading: false,
+              isAuthenticated: false,
+            });
+          }
         });
     } else {
       setState({
@@ -72,6 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: false,
       });
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const login = async (credentials: LoginCredentials) => {

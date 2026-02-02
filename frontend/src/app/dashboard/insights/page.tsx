@@ -13,13 +13,13 @@ export default function InsightsPage() {
   const { user, isLoading: authLoading } = useRequireAuth();
   const employeeId = user?.employee?.id;
 
-  const { data: employee } = useQuery({
+  const { data: employee, isLoading: loadingEmployee, error: employeeError } = useQuery({
     queryKey: ['employee', employeeId],
     queryFn: () => employeesApi.getById(employeeId!),
     enabled: !!employeeId,
   });
 
-  const { data: burnoutData } = useQuery({
+  const { data: burnoutData, isLoading: loadingBurnout } = useQuery({
     queryKey: ['burnout', employeeId],
     queryFn: () => employeesApi.getBurnout(employeeId!),
     enabled: !!employeeId,
@@ -30,7 +30,8 @@ export default function InsightsPage() {
     queryFn: personalizationApi.getSummary,
   });
 
-  if (authLoading) {
+  // Show loading state during auth check or initial data loading
+  if (authLoading || (employeeId && (loadingEmployee || loadingBurnout))) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -40,8 +41,18 @@ export default function InsightsPage() {
 
   if (!employeeId) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="text-center py-12 text-gray-500 dark:text-gray-400">
         Unable to load insights
+      </div>
+    );
+  }
+
+  // Show error state if employee data failed to load
+  if (employeeError) {
+    return (
+      <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+        <p className="mb-2">Failed to load insights data.</p>
+        <p className="text-sm">Please try refreshing the page.</p>
       </div>
     );
   }

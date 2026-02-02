@@ -140,7 +140,7 @@ function AlertCard({ alert, onAcknowledge }: { alert: PredictiveAlert; onAcknowl
 
           <button
             onClick={onAcknowledge}
-            className="mt-3 text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
+            className="btn btn-ghost mt-3 text-sm text-emerald-600 dark:text-emerald-400"
           >
             Acknowledge & Dismiss
           </button>
@@ -162,8 +162,8 @@ function PatternCard({ pattern, onDismiss }: { pattern: DetectedPattern; onDismi
         </div>
         <button
           onClick={onDismiss}
-          className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
-          title="Dismiss"
+          className="btn btn-icon p-1"
+          aria-label="Dismiss pattern"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

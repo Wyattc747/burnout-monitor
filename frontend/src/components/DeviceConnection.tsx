@@ -66,7 +66,7 @@ export function DeviceConnection({ onComplete }: { onComplete?: () => void }) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+    <div className="card">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Wearable Devices</h2>
 
       {message && (
@@ -93,7 +93,7 @@ export function DeviceConnection({ onComplete }: { onComplete?: () => void }) {
             <button
               onClick={() => handleConnect(device.id, device.name)}
               disabled={connectingId === device.id}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-wait"
+              className="btn btn-primary"
             >
               {connectingId === device.id ? 'Connecting...' : 'Connect'}
             </button>
@@ -106,7 +106,7 @@ export function DeviceConnection({ onComplete }: { onComplete?: () => void }) {
         <div className="flex justify-between pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
           <button
             onClick={onComplete}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            className="btn btn-ghost"
           >
             Skip for now
           </button>

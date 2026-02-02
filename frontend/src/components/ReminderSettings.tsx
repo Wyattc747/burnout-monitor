@@ -153,15 +153,27 @@ export function ReminderSettings() {
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Reminders & Notifications</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">Configure when and how you want to be reminded</p>
         </div>
-        {hasChanges && (
-          <button
-            onClick={handleSave}
-            disabled={mutation.isPending}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
-          >
-            {mutation.isPending ? 'Saving...' : 'Save Changes'}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {mutation.isError && (
+            <span className="text-sm text-red-600 dark:text-red-400">
+              Failed to save. Please try again.
+            </span>
+          )}
+          {mutation.isSuccess && !hasChanges && (
+            <span className="text-sm text-green-600 dark:text-green-400">
+              Saved!
+            </span>
+          )}
+          {hasChanges && (
+            <button
+              onClick={handleSave}
+              disabled={mutation.isPending}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
+            >
+              {mutation.isPending ? 'Saving...' : 'Save Changes'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Daily Check-in Reminder */}

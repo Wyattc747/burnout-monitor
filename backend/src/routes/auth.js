@@ -2,17 +2,14 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../utils/db');
 const { authenticate, generateToken } = require('../middleware/auth');
+const { validate, loginSchema, registerSchema } = require('../middleware/validate');
 
 const router = express.Router();
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Validation Error', message: 'Email and password required' });
-    }
 
     // Find user
     const userResult = await db.query(
@@ -66,31 +63,19 @@ router.post('/login', async (req, res) => {
 });
 
 // POST /api/auth/register
-router.post('/register', async (req, res) => {
+router.post('/register', validate(registerSchema), async (req, res) => {
+  const client = await db.getClient();
   try {
     const { email, password, firstName, lastName, department, jobTitle } = req.body;
 
-    if (!email || !password || !firstName || !lastName) {
-      return res.status(400).json({
-        error: 'Validation Error',
-        message: 'Email, password, first name, and last name are required',
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        error: 'Validation Error',
-        message: 'Password must be at least 6 characters',
-      });
-    }
-
     // Check if email already exists
-    const existingUser = await db.query(
+    const existingUser = await client.query(
       'SELECT id FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
 
     if (existingUser.rows.length > 0) {
+      client.release();
       return res.status(400).json({
         error: 'Validation Error',
         message: 'An account with this email already exists',
@@ -100,8 +85,11 @@ router.post('/register', async (req, res) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
+    // Begin transaction for user + employee + baselines creation
+    await client.query('BEGIN');
+
     // Create user (employees by default)
-    const userResult = await db.query(
+    const userResult = await client.query(
       `INSERT INTO users (email, password_hash, role)
        VALUES ($1, $2, 'employee')
        RETURNING id, email, role`,
@@ -111,7 +99,7 @@ router.post('/register', async (req, res) => {
     const user = userResult.rows[0];
 
     // Create employee record
-    const empResult = await db.query(
+    const empResult = await client.query(
       `INSERT INTO employees (user_id, first_name, last_name, email, department, job_title, hire_date)
        VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE)
        RETURNING id`,
@@ -121,11 +109,14 @@ router.post('/register', async (req, res) => {
     const employeeId = empResult.rows[0].id;
 
     // Create default baselines
-    await db.query(
+    await client.query(
       `INSERT INTO employee_baselines (employee_id, baseline_sleep_hours, baseline_sleep_quality, baseline_hrv, baseline_resting_hr, baseline_hours_worked)
        VALUES ($1, 7, 70, 45, 65, 8)`,
       [employeeId]
     );
+
+    // Commit all changes
+    await client.query('COMMIT');
 
     // Generate token
     const token = generateToken({
@@ -146,8 +137,12 @@ router.post('/register', async (req, res) => {
       message: 'Account created successfully',
     });
   } catch (err) {
+    // Rollback on any error
+    await client.query('ROLLBACK');
     console.error('Registration error:', err);
     res.status(500).json({ error: 'Server Error', message: 'Registration failed' });
+  } finally {
+    client.release();
   }
 });
 
@@ -178,65 +173,78 @@ router.post('/refresh', authenticate, async (req, res) => {
 
 // DELETE /api/auth/account - Delete user account
 router.delete('/account', authenticate, async (req, res) => {
+  const client = await db.getClient();
   try {
     const { password } = req.body;
     const userId = req.user.userId;
 
     // Verify password before deletion
-    const userResult = await db.query(
+    const userResult = await client.query(
       'SELECT password_hash FROM users WHERE id = $1',
       [userId]
     );
 
     if (userResult.rows.length === 0) {
+      client.release();
       return res.status(404).json({ error: 'Not Found', message: 'User not found' });
     }
 
     const validPassword = await bcrypt.compare(password, userResult.rows[0].password_hash);
     if (!validPassword) {
+      client.release();
       return res.status(401).json({ error: 'Unauthorized', message: 'Invalid password' });
     }
 
     // Get employee ID for cascade deletion
     const employeeId = req.user.employeeId;
 
+    // Begin transaction for all delete operations
+    await client.query('BEGIN');
+
     // Delete in order to respect foreign key constraints
     if (employeeId) {
       // Delete all employee-related data
-      await db.query('DELETE FROM wellness_streaks WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM email_metrics WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM detected_patterns WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM predictive_alerts WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM privacy_settings WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM zone_history WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM work_metrics WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM health_metrics WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM employee_baselines WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM feeling_checkins WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM personal_preferences WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM life_events WHERE employee_id = $1', [employeeId]);
-      await db.query('DELETE FROM alerts WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM wellness_streaks WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM email_metrics WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM detected_patterns WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM predictive_alerts WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM privacy_settings WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM zone_history WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM work_metrics WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM health_metrics WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM employee_baselines WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM feeling_checkins WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM personal_preferences WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM life_events WHERE employee_id = $1', [employeeId]);
+      await client.query('DELETE FROM alerts WHERE employee_id = $1', [employeeId]);
 
       // Remove from any team (set manager_id to null for reports)
-      await db.query('UPDATE employees SET manager_id = NULL WHERE manager_id = $1', [employeeId]);
+      await client.query('UPDATE employees SET manager_id = NULL WHERE manager_id = $1', [employeeId]);
 
       // Delete employee record
-      await db.query('DELETE FROM employees WHERE id = $1', [employeeId]);
+      await client.query('DELETE FROM employees WHERE id = $1', [employeeId]);
     }
 
     // Delete user-related data
-    await db.query('DELETE FROM reminder_settings WHERE user_id = $1', [userId]);
-    await db.query('DELETE FROM notification_preferences WHERE user_id = $1', [userId]);
-    await db.query('DELETE FROM google_calendar_tokens WHERE user_id = $1', [userId]);
-    await db.query('DELETE FROM gmail_tokens WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM reminder_settings WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM notification_preferences WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM google_calendar_tokens WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM gmail_tokens WHERE user_id = $1', [userId]);
 
     // Finally delete the user
-    await db.query('DELETE FROM users WHERE id = $1', [userId]);
+    await client.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    // Commit all changes
+    await client.query('COMMIT');
 
     res.json({ message: 'Account deleted successfully' });
   } catch (err) {
+    // Rollback on any error
+    await client.query('ROLLBACK');
     console.error('Delete account error:', err);
     res.status(500).json({ error: 'Server Error', message: 'Failed to delete account' });
+  } finally {
+    client.release();
   }
 });
 

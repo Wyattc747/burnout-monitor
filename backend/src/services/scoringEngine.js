@@ -636,14 +636,24 @@ function generateExplanation(burnoutScore, readinessScore, burnoutFactors, readi
   const thresholds = enhancedContext?.thresholds || null;
   const zone = determineZone(burnoutScore, readinessScore, thresholds);
 
-  // Combine and sort factors by impact
+  // Combine and sort factors by impact, deduplicating by name
   const allFactors = [...burnoutFactors, ...readinessFactors];
-  const sortedFactors = allFactors
+  const factorsWithImpact = allFactors
     .map((f) => ({
       ...f,
       absoluteImpact: Math.abs(f.normalizedScore - 50) * f.weight,
     }))
     .sort((a, b) => b.absoluteImpact - a.absoluteImpact);
+
+  // Deduplicate factors by name, keeping the one with highest absolute impact
+  const seenNames = new Set();
+  const sortedFactors = factorsWithImpact.filter((f) => {
+    if (seenNames.has(f.name)) {
+      return false;
+    }
+    seenNames.add(f.name);
+    return true;
+  });
 
   // Generate human-readable explanations for top factors
   const humanFactors = sortedFactors.slice(0, 4).map((f) => ({

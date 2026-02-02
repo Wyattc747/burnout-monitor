@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 interface WellnessResource {
   id: string;
@@ -22,8 +22,8 @@ interface WellnessResource {
 async function fetchResources(category?: string): Promise<WellnessResource[]> {
   const token = localStorage.getItem('token');
   const url = category
-    ? `${API_URL}/api/wellness/resources?category=${category}`
-    : '${API_URL}/api/wellness/resources';
+    ? `${API_URL}/wellness/resources?category=${category}`
+    : `${API_URL}/wellness/resources`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });

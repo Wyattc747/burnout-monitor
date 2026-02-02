@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface EmailMetric {
   date: string;
@@ -326,21 +326,29 @@ export function WorkPatterns({ employeeId }: { employeeId: string }) {
 
 export function WellnessIndicators({ employeeId, zone }: { employeeId: string; zone: string }) {
   // Privacy-respecting wellness indicators - no exact health values
+  const getIndicatorClasses = (zoneValue: string) => {
+    switch (zoneValue) {
+      case 'green':
+        return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400';
+      case 'yellow':
+        return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400';
+      default:
+        return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+    }
+  };
+
   const indicators = [
     {
       label: 'Recovery Status',
       value: zone === 'green' ? 'Optimal' : zone === 'yellow' ? 'Moderate' : 'Needs Attention',
-      color: zone === 'green' ? 'emerald' : zone === 'yellow' ? 'yellow' : 'red',
     },
     {
       label: 'Energy Levels',
       value: zone === 'green' ? 'High' : zone === 'yellow' ? 'Moderate' : 'Low',
-      color: zone === 'green' ? 'emerald' : zone === 'yellow' ? 'yellow' : 'red',
     },
     {
       label: 'Stress Indicators',
       value: zone === 'green' ? 'Low' : zone === 'yellow' ? 'Moderate' : 'Elevated',
-      color: zone === 'green' ? 'emerald' : zone === 'yellow' ? 'yellow' : 'red',
     },
   ];
 
@@ -356,7 +364,7 @@ export function WellnessIndicators({ employeeId, zone }: { employeeId: string; z
         {indicators.map((indicator) => (
           <div key={indicator.label} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <span className="text-sm text-gray-700 dark:text-gray-300">{indicator.label}</span>
-            <span className={`px-2 py-1 text-sm font-medium rounded-full bg-${indicator.color}-100 dark:bg-${indicator.color}-900/30 text-${indicator.color}-700 dark:text-${indicator.color}-400`}>
+            <span className={`px-2 py-1 text-sm font-medium rounded-full ${getIndicatorClasses(zone)}`}>
               {indicator.value}
             </span>
           </div>

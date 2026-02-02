@@ -7,6 +7,7 @@ import { teamsApi, alertsApi } from '@/lib/api';
 import { EmployeeCard } from '@/components/EmployeeCard';
 import { AlertCard } from '@/components/AlertCard';
 import { DemoControls } from '@/components/DemoControls';
+import { TeamChallenges } from '@/components/TeamChallenges';
 import { clsx } from 'clsx';
 import type { Employee } from '@/types';
 import {
@@ -69,7 +70,7 @@ export function ManagerDashboard() {
 
       {/* Top Stats Row */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <TeamHealthCard score={teamHealthScore} trend={5} />
+        <TeamHealthCard score={teamHealthScore} trend={0} />
         <ZoneSummaryCard
           zone="red"
           count={zoneCounts.red}
@@ -214,6 +215,9 @@ export function ManagerDashboard() {
           </div>
         </div>
       )}
+
+      {/* Team Challenges */}
+      <TeamChallenges isManager={true} compact={true} />
 
       {/* Navigation Cards */}
       <div className="grid sm:grid-cols-3 gap-4">

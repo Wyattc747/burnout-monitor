@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
@@ -14,12 +15,49 @@ const personalizationRoutes = require('./routes/personalization');
 const teamsRoutes = require('./routes/teams');
 const wellnessRoutes = require('./routes/wellness');
 const chatRoutes = require('./routes/chat');
+const goalsRoutes = require('./routes/goals');
+const challengesRoutes = require('./routes/challenges');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// SECURITY: Restrict CORS to allowed origins
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://theshepherd.io',
+  'https://www.theshepherd.io',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
+
+// SECURITY: Rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per window
+  message: { error: 'Too Many Requests', message: 'Too many login attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// SECURITY: General rate limiting
+const generalLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+  message: { error: 'Too Many Requests', message: 'Rate limit exceeded' },
+});
+
+app.use(generalLimiter);
 app.use(express.json());
 
 // Serve uploaded files statically
@@ -39,7 +77,7 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -50,6 +88,8 @@ app.use('/api/personalization', personalizationRoutes);
 app.use('/api/teams', teamsRoutes);
 app.use('/api/wellness', wellnessRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/goals', goalsRoutes);
+app.use('/api/challenges', challengesRoutes);
 
 // 404 handler
 app.use((req, res) => {

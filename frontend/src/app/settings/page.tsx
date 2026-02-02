@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { notificationsApi } from '@/lib/api';
+import { notificationsApi, integrationsApi } from '@/lib/api';
 import { useAuth, useRequireAuth } from '@/lib/auth';
 import { Navbar } from '@/components/Navbar';
 import { ProfilePictureUpload } from '@/components/ProfilePictureUpload';
@@ -24,11 +24,42 @@ export default function SettingsPage() {
 
   const [smsEnabled, setSmsEnabled] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [onBurnout, setOnBurnout] = useState(true);
   const [onOpportunity, setOnOpportunity] = useState(true);
   const [saved, setSaved] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Refs for timeout cleanup to prevent memory leaks
+  const savedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const testResultTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (savedTimeoutRef.current) {
+        clearTimeout(savedTimeoutRef.current);
+      }
+      if (testResultTimeoutRef.current) {
+        clearTimeout(testResultTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Phone number validation
+  const validatePhone = (phone: string) => {
+    if (!phone) return '';
+    // Basic phone number validation - must contain at least 10 digits
+    const digitsOnly = phone.replace(/\D/g, '');
+    if (digitsOnly.length < 10) {
+      return 'Phone number must have at least 10 digits';
+    }
+    if (digitsOnly.length > 15) {
+      return 'Phone number is too long';
+    }
+    return '';
+  };
 
   const { data: config, isLoading } = useQuery({
     queryKey: ['smsConfig'],
@@ -44,14 +75,7 @@ export default function SettingsPage() {
 
   const { data: integrationStatus } = useQuery({
     queryKey: ['integration-status'],
-    queryFn: async () => {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/integrations/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch');
-      return res.json();
-    },
+    queryFn: integrationsApi.getStatus,
     enabled: !authLoading,
   });
 
@@ -69,7 +93,11 @@ export default function SettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['smsConfig'] });
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      // Clear any existing timeout before setting a new one
+      if (savedTimeoutRef.current) {
+        clearTimeout(savedTimeoutRef.current);
+      }
+      savedTimeoutRef.current = setTimeout(() => setSaved(false), 3000);
     },
   });
 
@@ -77,25 +105,45 @@ export default function SettingsPage() {
     mutationFn: notificationsApi.sendTestSMS,
     onSuccess: (data) => {
       setTestResult({ success: true, message: data.message });
-      setTimeout(() => setTestResult(null), 5000);
+      // Clear any existing timeout before setting a new one
+      if (testResultTimeoutRef.current) {
+        clearTimeout(testResultTimeoutRef.current);
+      }
+      testResultTimeoutRef.current = setTimeout(() => setTestResult(null), 5000);
     },
     onError: (error: any) => {
       setTestResult({
         success: false,
         message: error.response?.data?.message || 'Failed to send test SMS',
       });
-      setTimeout(() => setTestResult(null), 5000);
+      // Clear any existing timeout before setting a new one
+      if (testResultTimeoutRef.current) {
+        clearTimeout(testResultTimeoutRef.current);
+      }
+      testResultTimeoutRef.current = setTimeout(() => setTestResult(null), 5000);
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const error = validatePhone(phoneNumber);
+    if (error && smsEnabled) {
+      setPhoneError(error);
+      return;
+    }
     updateConfig.mutate({
       smsEnabled,
       phoneNumber: phoneNumber || null,
       onBurnout,
       onOpportunity,
     });
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setPhoneNumber(value);
+    if (phoneError) {
+      setPhoneError(validatePhone(value));
+    }
   };
 
   const handleTestSMS = () => {
@@ -106,13 +154,28 @@ export default function SettingsPage() {
   };
 
   const connectIntegration = async (provider: string) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/integrations/${provider}/auth`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
+    try {
+      let data: { url: string };
+      switch (provider) {
+        case 'google':
+          data = await integrationsApi.getGoogleAuthUrl();
+          break;
+        case 'salesforce':
+          data = await integrationsApi.getSalesforceAuthUrl();
+          break;
+        default:
+          // For other providers, fall back to generic approach using the api client
+          const token = localStorage.getItem('token');
+          const res = await fetch(`${API_URL}/integrations/${provider}/auth`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          data = await res.json();
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error(`Failed to connect to ${provider}:`, error);
     }
   };
 
@@ -295,11 +358,20 @@ export default function SettingsPage() {
                       <input
                         type="tel"
                         value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        onChange={(e) => handlePhoneChange(e.target.value)}
+                        onBlur={() => setPhoneError(validatePhone(phoneNumber))}
                         placeholder="+1 (555) 123-4567"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                        className={clsx(
+                          'w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50',
+                          phoneError && smsEnabled
+                            ? 'border-red-500 focus:ring-red-500'
+                            : 'border-gray-300 dark:border-gray-600'
+                        )}
                         disabled={!smsEnabled}
                       />
+                      {phoneError && smsEnabled && (
+                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{phoneError}</p>
+                      )}
                     </div>
 
                     <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -340,6 +412,11 @@ export default function SettingsPage() {
                   {updateConfig.isPending ? 'Saving...' : 'Save Changes'}
                 </button>
                 {saved && <span className="text-green-600 text-sm">Settings saved!</span>}
+                {updateConfig.isError && (
+                  <span className="text-red-600 text-sm">
+                    {(updateConfig.error as any)?.response?.data?.message || 'Failed to save settings'}
+                  </span>
+                )}
               </div>
             </form>
           </div>

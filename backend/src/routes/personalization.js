@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../utils/db');
 const { authenticate } = require('../middleware/auth');
+const { validate, checkinSchema, preferencesSchema } = require('../middleware/validate');
 
 const router = express.Router();
 
@@ -52,7 +53,7 @@ router.get('/checkins', async (req, res) => {
 });
 
 // POST /api/personalization/checkins - Create a new feeling check-in
-router.post('/checkins', async (req, res) => {
+router.post('/checkins', validate(checkinSchema), async (req, res) => {
   try {
     const employeeId = req.user.employeeId;
     const {
@@ -62,14 +63,6 @@ router.post('/checkins', async (req, res) => {
       motivationLevel,
       notes,
     } = req.body;
-
-    // Validate required field
-    if (!overallFeeling || overallFeeling < 1 || overallFeeling > 5) {
-      return res.status(400).json({
-        error: 'Validation Error',
-        message: 'Overall feeling is required and must be between 1 and 5',
-      });
-    }
 
     // Get current context snapshot (latest metrics)
     const healthResult = await db.query(`
@@ -250,7 +243,7 @@ router.get('/preferences', async (req, res) => {
 });
 
 // PUT /api/personalization/preferences - Update user's preferences
-router.put('/preferences', async (req, res) => {
+router.put('/preferences', validate(preferencesSchema), async (req, res) => {
   try {
     const employeeId = req.user.employeeId;
     const {

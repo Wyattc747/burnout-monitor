@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/ThemeToggle';
 import { ToastProvider } from '@/components/Toast';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 import { GlobalWellnessMentor } from '@/components/GlobalWellnessMentor';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -22,16 +23,18 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <ToastProvider>
-          <AuthProvider>
-            <ServiceWorkerRegistration />
-            {children}
-            <GlobalWellnessMentor />
-          </AuthProvider>
-        </ToastProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <ServiceWorkerRegistration />
+              {children}
+              <GlobalWellnessMentor />
+            </AuthProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

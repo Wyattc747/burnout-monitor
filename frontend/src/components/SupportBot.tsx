@@ -209,6 +209,7 @@ export function SupportBot({ employeeId, isOpen, onClose }: SupportBotProps) {
         <button
           onClick={onClose}
           className="text-white hover:bg-indigo-500 rounded-lg p-1 transition-colors"
+          aria-label="Close chat"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -291,6 +292,7 @@ export function SupportBot({ employeeId, isOpen, onClose }: SupportBotProps) {
             type="submit"
             disabled={!input.trim() || isTyping}
             className="px-4 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            aria-label="Send message"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -308,7 +310,7 @@ export function SupportBotButton({ onClick }: { onClick: () => void }) {
     <button
       onClick={onClick}
       className="fixed bottom-4 right-4 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors z-40"
-      title="Talk to Shepherd"
+      aria-label="Talk to Shepherd"
     >
       <span className="text-2xl">🐑</span>
     </button>

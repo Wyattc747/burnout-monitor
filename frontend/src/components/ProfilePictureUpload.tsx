@@ -134,7 +134,7 @@ export function ProfilePictureUpload({ currentUrl, name, onSuccess }: ProfilePic
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isLoading}
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+          className="btn btn-ghost text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
         >
           {currentUrl ? 'Change photo' : 'Upload photo'}
         </button>
@@ -143,7 +143,7 @@ export function ProfilePictureUpload({ currentUrl, name, onSuccess }: ProfilePic
             type="button"
             onClick={handleRemove}
             disabled={isLoading}
-            className="text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
+            className="btn btn-ghost text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
           >
             Remove
           </button>

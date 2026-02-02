@@ -195,7 +195,16 @@ export function WellnessMentorDemo({ onClose }: { onClose: () => void }) {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef(true);
   const queryClient = useQueryClient();
+
+  // Track component mount state for cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -294,6 +303,9 @@ export function WellnessMentorDemo({ onClose }: { onClose: () => void }) {
       // Call the ChatGPT-powered chat API
       const response = await chatApi.sendMessage(currentInput, conversationHistory);
 
+      // Only update state if component is still mounted
+      if (!isMountedRef.current) return;
+
       const mentorResponse: Message = {
         id: Date.now().toString(),
         type: 'mentor',
@@ -314,6 +326,8 @@ export function WellnessMentorDemo({ onClose }: { onClose: () => void }) {
       setMessages((prev) => [...prev, mentorResponse]);
     } catch (error) {
       console.error('Chat error:', error);
+      // Only update state if component is still mounted
+      if (!isMountedRef.current) return;
       // Fallback to local response if API fails
       const fallbackResponse: Message = {
         id: Date.now().toString(),
@@ -323,7 +337,9 @@ export function WellnessMentorDemo({ onClose }: { onClose: () => void }) {
       };
       setMessages((prev) => [...prev, fallbackResponse]);
     } finally {
-      setIsTyping(false);
+      if (isMountedRef.current) {
+        setIsTyping(false);
+      }
     }
   };
 

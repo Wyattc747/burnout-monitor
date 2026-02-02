@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { employeesApi, personalizationApi, alertsApi } from '@/lib/api';
@@ -10,6 +9,7 @@ import { PersonalizationPrompt } from '@/components/PersonalizationPrompt';
 import { SmartRecommendations } from '@/components/SmartRecommendations';
 import { LifeEventsSection } from '@/components/LifeEventsSection';
 import { WellnessMentorPreview } from '@/components/WellnessMentor';
+import { GoalSetting } from '@/components/GoalSetting';
 import { clsx } from 'clsx';
 import {
   TrendingUp,
@@ -19,7 +19,8 @@ import {
   ChevronRight,
   Calendar,
   AlertCircle,
-  Zap
+  Zap,
+  Target
 } from 'lucide-react';
 
 interface EmployeeDashboardProps {
@@ -57,8 +58,9 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
 
   if (!employee) {
     return (
-      <div className="text-center py-12 text-gray-500">
-        Employee data not found
+      <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+        <p className="mb-2">Employee data not found</p>
+        <p className="text-sm">Please try refreshing the page.</p>
       </div>
     );
   }
@@ -166,6 +168,9 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
       {/* Smart Recommendations */}
       <SmartRecommendations employeeId={employeeId} compact />
 
+      {/* Goal Setting */}
+      <GoalSetting />
+
       {/* Life Events & Wellness Mentor */}
       <div className="grid lg:grid-cols-2 gap-6">
         <LifeEventsSection />
@@ -173,7 +178,7 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
       </div>
 
       {/* Navigation Cards */}
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <NavigationCard
           href="/dashboard/insights"
           icon={<TrendingUp className="w-6 h-6" />}
@@ -195,6 +200,13 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
           description="Streaks, achievements & resources"
           color="rose"
         />
+        <NavigationCard
+          href="/wellness#goals"
+          icon={<Target className="w-6 h-6" />}
+          title="Goals"
+          description="Set and track your wellness goals"
+          color="amber"
+        />
       </div>
 
       {/* Quick Actions */}
@@ -213,50 +225,6 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
           View Profile
         </Link>
       </div>
-    </div>
-  );
-}
-
-function ScoreCard({
-  label,
-  score,
-  trend,
-  color,
-  invertTrend = false,
-}: {
-  label: string;
-  score: number;
-  trend: number;
-  color: 'red' | 'green';
-  invertTrend?: boolean;
-}) {
-  const colorClasses = {
-    red: 'text-red-600 dark:text-red-400',
-    green: 'text-emerald-600 dark:text-emerald-400',
-  };
-
-  const isPositive = invertTrend ? trend < 0 : trend > 0;
-  const isNegative = invertTrend ? trend > 0 : trend < 0;
-
-  return (
-    <div className="card">
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{label}</p>
-      <div className="flex items-baseline gap-1">
-        <span className={clsx('text-3xl font-bold', colorClasses[color])}>
-          {score}
-        </span>
-        <span className="text-gray-400 dark:text-gray-500">/100</span>
-      </div>
-      {trend !== 0 && (
-        <p className={clsx(
-          'text-xs mt-1',
-          isPositive && 'text-emerald-600 dark:text-emerald-400',
-          isNegative && 'text-red-600 dark:text-red-400',
-          !isPositive && !isNegative && 'text-gray-500'
-        )}>
-          {trend > 0 ? '+' : ''}{trend.toFixed(0)} from yesterday
-        </p>
-      )}
     </div>
   );
 }
@@ -353,12 +321,13 @@ function NavigationCard({
   icon: React.ReactNode;
   title: string;
   description: string;
-  color: 'indigo' | 'emerald' | 'rose';
+  color: 'indigo' | 'emerald' | 'rose' | 'amber';
 }) {
   const colorClasses = {
     indigo: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
     emerald: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
     rose: 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400',
+    amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
   };
 
   return (

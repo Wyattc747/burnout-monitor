@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
 import { chatApi } from '@/lib/api';
 import { clsx } from 'clsx';
@@ -30,9 +30,18 @@ export function GlobalWellnessMentor() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef(true);
 
   // Get the user's first name from the employee data
   const firstName = user?.employee?.firstName || 'there';
+
+  // Track component mount state
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -52,12 +61,7 @@ export function GlobalWellnessMentor() {
     }
   }, [isOpen, messages.length, firstName, isAuthenticated]);
 
-  // Don't render if not authenticated
-  if (!isAuthenticated || !user) {
-    return null;
-  }
-
-  const handleSend = async (message: string = input) => {
+  const handleSend = useCallback(async (message: string = input) => {
     if (!message.trim() || isTyping) return;
 
     // Add user message
@@ -81,32 +85,44 @@ export function GlobalWellnessMentor() {
       // Call the AI chat API
       const response = await chatApi.sendMessage(message, conversationHistory);
 
-      // Add bot response
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'bot',
-        content: response.response,
-        timestamp: new Date(),
-        action: response.action,
-      };
-      setMessages((prev) => [...prev, botMessage]);
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        // Add bot response
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'bot',
+          content: response.response,
+          timestamp: new Date(),
+          action: response.action,
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      }
     } catch (error) {
       console.error('Chat error:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'bot',
-        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      if (isMountedRef.current) {
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'bot',
+          content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      }
     } finally {
-      setIsTyping(false);
+      if (isMountedRef.current) {
+        setIsTyping(false);
+      }
     }
-  };
+  }, [input, isTyping, messages]);
 
-  const handleQuickAction = (text: string) => {
+  const handleQuickAction = useCallback((text: string) => {
     handleSend(text);
-  };
+  }, [handleSend]);
+
+  // Don't render if not authenticated
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   return (
     <>

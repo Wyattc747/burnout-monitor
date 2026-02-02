@@ -86,10 +86,10 @@ export default function EmployeeDetailPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push('/dashboard')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
             <svg
-              className="w-5 h-5 text-gray-600"
+              className="w-5 h-5 text-gray-600 dark:text-gray-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -103,10 +103,10 @@ export default function EmployeeDetailPage() {
             </svg>
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {employee.firstName} {employee.lastName}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               {employee.jobTitle} • {employee.department}
             </p>
           </div>
@@ -165,7 +165,7 @@ export default function EmployeeDetailPage() {
 
         {/* Score Trends */}
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Score History
           </h3>
           {burnoutData?.history && burnoutData.history.length > 0 ? (
@@ -198,7 +198,7 @@ export default function EmployeeDetailPage() {
       {/* Work Metrics - Managers only see work data, not health data */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Work Metrics</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Work Metrics</h3>
           <div className="flex gap-1">
             {(['hours', 'tasks', 'breakdown'] as const).map((tab) => (
               <button
@@ -232,7 +232,7 @@ export default function EmployeeDetailPage() {
 
       {/* Alert History */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Alert History
         </h3>
         {employeeAlerts.length === 0 ? (

@@ -2,26 +2,38 @@
 
 import { useEffect } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export function ServiceWorkerRegistration() {
   useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+      const handleLoad = () => {
         navigator.serviceWorker
           .register('/sw.js')
           .then((registration) => {
             console.log('SW registered:', registration.scope);
 
             // Check for updates periodically
-            setInterval(() => {
+            intervalId = setInterval(() => {
               registration.update();
             }, 60 * 60 * 1000); // Every hour
           })
           .catch((error) => {
             console.error('SW registration failed:', error);
           });
-      });
+      };
+
+      window.addEventListener('load', handleLoad);
+
+      // Cleanup function
+      return () => {
+        window.removeEventListener('load', handleLoad);
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+      };
     }
   }, []);
 
@@ -66,7 +78,7 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
     // Send subscription to backend
     const token = localStorage.getItem('token');
     if (token) {
-      await fetch('${API_URL}/api/wellness/reminders', {
+      await fetch(`${API_URL}/wellness/reminders`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -107,7 +119,7 @@ export async function unsubscribeFromPush(): Promise<boolean> {
     // Update backend
     const token = localStorage.getItem('token');
     if (token) {
-      await fetch('${API_URL}/api/wellness/reminders', {
+      await fetch(`${API_URL}/wellness/reminders`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,

@@ -265,3 +265,73 @@ export interface PersonalizationSummary {
   };
   needsSetup: boolean;
 }
+
+// Goal Types
+export type GoalType = 'sleep_hours' | 'exercise_minutes' | 'green_zone' | 'checkin_streak';
+
+export interface Goal {
+  id: string;
+  type: GoalType;
+  title: string;
+  description: string;
+  targetValue: number;
+  currentValue: number;
+  unit: string;
+  startDate: string;
+  endDate: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GoalSuggestion {
+  type: GoalType;
+  title: string;
+  suggestedTarget: number;
+  reason: string;
+  unit: string;
+}
+
+// Intervention and 1:1 Meeting Types
+export type InterventionType = 'check_in' | 'workload_adjustment' | 'time_off' | 'resource_referral' | 'recognition' | 'goal_setting' | 'other';
+export type OutcomeStatus = 'improved' | 'stable' | 'declined' | 'pending';
+
+export interface ConversationTemplate {
+  id: string;
+  name: string;
+  category: 'wellness_check' | 'performance' | 'recognition' | 'support' | 'general';
+  description: string;
+  openingQuestions: string[];
+  followUpQuestions: string[];
+  suggestedActions: string[];
+  applicableZones: Zone[];
+}
+
+export interface Intervention {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  managerId: string;
+  type: InterventionType;
+  meetingDate: string;
+  notes: string | null;
+  templateUsed: string | null;
+  actionsTaken: string[];
+  followUpDate: string | null;
+  zoneBefore: Zone;
+  burnoutScoreBefore: number;
+  createdAt: string;
+  updatedAt: string;
+  outcome?: InterventionOutcome;
+}
+
+export interface InterventionOutcome {
+  id: string;
+  interventionId: string;
+  status: OutcomeStatus;
+  zoneAfter: Zone | null;
+  burnoutScoreAfter: number | null;
+  notes: string | null;
+  daysToImprovement: number | null;
+  recordedAt: string;
+}

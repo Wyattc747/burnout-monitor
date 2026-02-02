@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export function DeleteAccount() {
   const router = useRouter();
@@ -29,7 +29,7 @@ export function DeleteAccount() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('${API_URL}/api/auth/account', {
+      const res = await fetch(`${API_URL}/auth/account`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -68,7 +68,7 @@ export function DeleteAccount() {
             </p>
             <button
               onClick={() => setShowConfirm(true)}
-              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              className="btn btn-danger mt-4"
             >
               Delete My Account
             </button>
@@ -112,7 +112,7 @@ export function DeleteAccount() {
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder="DELETE"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="input"
           />
         </div>
 
@@ -125,7 +125,7 @@ export function DeleteAccount() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Your password"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="input"
           />
         </div>
 
@@ -141,14 +141,14 @@ export function DeleteAccount() {
               setConfirmText('');
               setError('');
             }}
-            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors font-medium"
+            className="btn btn-secondary flex-1"
           >
             Cancel
           </button>
           <button
             onClick={handleDelete}
             disabled={isDeleting || confirmText !== 'DELETE' || !password}
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-danger flex-1"
           >
             {isDeleting ? 'Deleting...' : 'Delete Account'}
           </button>

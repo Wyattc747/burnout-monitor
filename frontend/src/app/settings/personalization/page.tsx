@@ -1,8 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { personalizationApi } from '@/lib/api';
+import { useRequireAuth } from '@/lib/auth';
+import { Navbar } from '@/components/Navbar';
 import { PersonalPreferencesForm } from '@/components/PersonalPreferencesForm';
 import { LifeEventsManager } from '@/components/LifeEventsManager';
 import { FeelingCheckin } from '@/components/FeelingCheckin';
@@ -11,21 +14,25 @@ import { clsx } from 'clsx';
 type Tab = 'preferences' | 'life-events' | 'checkins';
 
 export default function PersonalizationPage() {
+  const { isLoading: authLoading } = useRequireAuth();
   const [activeTab, setActiveTab] = useState<Tab>('preferences');
 
   const { data: summary } = useQuery({
     queryKey: ['personalization', 'summary'],
     queryFn: personalizationApi.getSummary,
+    enabled: !authLoading,
   });
 
   const { data: checkinStats } = useQuery({
     queryKey: ['checkin-stats'],
     queryFn: personalizationApi.getCheckinStats,
+    enabled: !authLoading,
   });
 
   const { data: checkins } = useQuery({
     queryKey: ['checkins'],
     queryFn: () => personalizationApi.getCheckins(10),
+    enabled: !authLoading,
   });
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
@@ -34,16 +41,40 @@ export default function PersonalizationPage() {
     { id: 'checkins', label: 'Check-ins', icon: '💭' },
   ];
 
-  return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Personalization
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Customize how ShepHerd understands your unique needs and circumstances.
-        </p>
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Navbar />
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar />
+      <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* Back link */}
+        <Link
+          href="/settings"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-4"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Settings
+        </Link>
+
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Personalization
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Customize how ShepHerd understands your unique needs and circumstances.
+          </p>
+        </div>
 
       {/* Summary Cards */}
       <div className="grid sm:grid-cols-3 gap-4 mb-8">
@@ -191,6 +222,7 @@ export default function PersonalizationPage() {
           </div>
         )}
       </div>
+      </main>
     </div>
   );
 }

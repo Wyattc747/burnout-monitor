@@ -16,6 +16,15 @@ import type {
   LifeEvent,
   LifeEventTemplate,
   PersonalizationSummary,
+  Goal,
+  GoalType,
+  GoalSuggestion,
+  ConversationTemplate,
+  Intervention,
+  InterventionOutcome,
+  InterventionType,
+  OutcomeStatus,
+  Zone,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -38,15 +47,84 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 responses
+// Custom error class for API errors
+export class ApiError extends Error {
+  status: number;
+  code: string;
+  data: unknown;
+
+  constructor(message: string, status: number, code: string, data?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+    this.data = data;
+  }
+}
+
+// Handle API error responses
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+    if (typeof window === 'undefined') {
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+
+    const status = error.response?.status;
+    const data = error.response?.data;
+    const message = data?.message || error.message || 'An unexpected error occurred';
+
+    // Log errors for debugging (except 401 which is expected during logout/session expiry)
+    if (status !== 401) {
+      console.error(`API Error [${status}]:`, message, data);
+    }
+
+    switch (status) {
+      case 401:
+        // Unauthorized - clear auth and redirect to login
+        localStorage.removeItem('token');
+        localStorage.removeItem('employeeId');
+        // Only redirect if not already on login page
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+        break;
+
+      case 403:
+        // Forbidden - user doesn't have permission
+        console.error('Access forbidden:', message);
+        break;
+
+      case 404:
+        // Not found - resource doesn't exist
+        console.error('Resource not found:', message);
+        break;
+
+      case 500:
+      case 502:
+      case 503:
+      case 504:
+        // Server errors - log and let UI handle display
+        console.error('Server error:', message);
+        break;
+
+      default:
+        // Network errors or other issues
+        if (error.code === 'ERR_NETWORK') {
+          console.error('Network error - unable to connect to server');
+        }
+        break;
+    }
+
+    // Create a more informative error object
+    const apiError = new ApiError(
+      message,
+      status || 0,
+      error.code || 'UNKNOWN_ERROR',
+      data
+    );
+
+    return Promise.reject(apiError);
   }
 );
 
@@ -540,6 +618,228 @@ export const chatApi = {
     };
   }> => {
     const { data } = await api.post('/chat', { message, conversationHistory });
+    return data;
+  },
+};
+
+// Team Challenges API
+export type ChallengeType = 'steps' | 'sleep' | 'exercise' | 'checkins' | 'green_zone';
+export type ChallengeStatus = 'upcoming' | 'active' | 'completed';
+
+export interface Challenge {
+  id: string;
+  name: string;
+  description: string;
+  type: ChallengeType;
+  targetValue: number;
+  unit: string;
+  startDate: string;
+  endDate: string;
+  status: ChallengeStatus;
+  createdBy: string;
+  creatorName: string;
+  participantCount: number;
+  isParticipating: boolean;
+  userProgress?: number;
+  userRank?: number;
+  createdAt: string;
+}
+
+export interface ChallengeParticipant {
+  id: string;
+  name: string;
+  progress: number;
+  rank: number;
+  joinedAt: string;
+}
+
+export interface ChallengeLeaderboard {
+  challenge: Challenge;
+  participants: ChallengeParticipant[];
+  totalParticipants: number;
+}
+
+export const challengesApi = {
+  // Get all challenges (optionally filter by status)
+  getAll: async (status?: ChallengeStatus): Promise<Challenge[]> => {
+    const { data } = await api.get('/challenges', { params: { status } });
+    return data;
+  },
+
+  // Get a specific challenge with leaderboard
+  getById: async (id: string): Promise<ChallengeLeaderboard> => {
+    const { data } = await api.get(`/challenges/${id}`);
+    return data;
+  },
+
+  // Create a new challenge (managers only)
+  create: async (challenge: {
+    name: string;
+    description?: string;
+    type: ChallengeType;
+    targetValue: number;
+    unit: string;
+    startDate: string;
+    endDate: string;
+  }): Promise<Challenge> => {
+    const { data } = await api.post('/challenges', challenge);
+    return data;
+  },
+
+  // Join a challenge
+  join: async (id: string): Promise<{ message: string; challenge: Challenge }> => {
+    const { data } = await api.post(`/challenges/${id}/join`);
+    return data;
+  },
+
+  // Leave a challenge
+  leave: async (id: string): Promise<{ message: string }> => {
+    const { data } = await api.post(`/challenges/${id}/leave`);
+    return data;
+  },
+
+  // Update progress (usually done automatically, but can be manual)
+  updateProgress: async (id: string, progress: number): Promise<{ progress: number }> => {
+    const { data } = await api.put(`/challenges/${id}/progress`, { progress });
+    return data;
+  },
+
+  // Delete a challenge (creator/manager only)
+  delete: async (id: string): Promise<{ message: string }> => {
+    const { data } = await api.delete(`/challenges/${id}`);
+    return data;
+  },
+
+  // Get leaderboard for a challenge
+  getLeaderboard: async (id: string, limit = 10): Promise<ChallengeParticipant[]> => {
+    const { data } = await api.get(`/challenges/${id}/leaderboard`, { params: { limit } });
+    return data;
+  },
+};
+
+// Goals API
+export const goalsApi = {
+  getAll: async (): Promise<Goal[]> => {
+    const { data } = await api.get('/goals');
+    return data;
+  },
+
+  create: async (goal: {
+    type: GoalType;
+    title: string;
+    description?: string;
+    targetValue: number;
+    unit: string;
+    endDate?: string;
+  }): Promise<Goal> => {
+    const { data } = await api.post('/goals', goal);
+    return data;
+  },
+
+  update: async (id: string, updates: {
+    title?: string;
+    description?: string;
+    targetValue?: number;
+    currentValue?: number;
+    endDate?: string;
+    isActive?: boolean;
+  }): Promise<Goal> => {
+    const { data } = await api.put(`/goals/${id}`, updates);
+    return data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/goals/${id}`);
+  },
+
+  getSuggestions: async (): Promise<GoalSuggestion[]> => {
+    const { data } = await api.get('/goals/suggestions');
+    return data;
+  },
+};
+
+// Interventions API (for 1:1 meeting tracking)
+export const interventionsApi = {
+  // Get conversation templates
+  getTemplates: async (zone?: Zone): Promise<ConversationTemplate[]> => {
+    const { data } = await api.get('/interventions/templates', { params: { zone } });
+    return data;
+  },
+
+  // Get all interventions for the manager's team
+  getAll: async (params?: {
+    employeeId?: string;
+    limit?: number;
+    includeOutcomes?: boolean;
+  }): Promise<Intervention[]> => {
+    const { data } = await api.get('/interventions', { params });
+    return data;
+  },
+
+  // Get a specific intervention
+  getById: async (id: string): Promise<Intervention> => {
+    const { data } = await api.get(`/interventions/${id}`);
+    return data;
+  },
+
+  // Create a new intervention (log a 1:1 meeting)
+  create: async (intervention: {
+    employeeId: string;
+    type: InterventionType;
+    meetingDate: string;
+    notes?: string;
+    templateUsed?: string;
+    actionsTaken?: string[];
+    followUpDate?: string;
+  }): Promise<Intervention> => {
+    const { data } = await api.post('/interventions', intervention);
+    return data;
+  },
+
+  // Update an intervention
+  update: async (
+    id: string,
+    updates: {
+      notes?: string;
+      actionsTaken?: string[];
+      followUpDate?: string;
+    }
+  ): Promise<Intervention> => {
+    const { data } = await api.put(`/interventions/${id}`, updates);
+    return data;
+  },
+
+  // Record an outcome for an intervention
+  recordOutcome: async (
+    interventionId: string,
+    outcome: {
+      status: OutcomeStatus;
+      notes?: string;
+    }
+  ): Promise<InterventionOutcome> => {
+    const { data } = await api.post(`/interventions/${interventionId}/outcome`, outcome);
+    return data;
+  },
+
+  // Get intervention history for a specific employee
+  getEmployeeHistory: async (employeeId: string): Promise<{
+    interventions: Intervention[];
+    improvementRate: number;
+    avgDaysToImprovement: number | null;
+  }> => {
+    const { data } = await api.get(`/interventions/employee/${employeeId}/history`);
+    return data;
+  },
+
+  // Get team intervention statistics
+  getTeamStats: async (): Promise<{
+    totalInterventions: number;
+    improvementRate: number;
+    avgDaysToImprovement: number | null;
+    byType: Record<InterventionType, number>;
+    recentInterventions: Intervention[];
+  }> => {
+    const { data } = await api.get('/interventions/stats');
     return data;
   },
 };

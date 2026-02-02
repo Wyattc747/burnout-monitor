@@ -590,4 +590,393 @@ router.get('/meeting-suggestions', requireRole('manager'), async (req, res) => {
   }
 });
 
+// POST /api/teams/meeting-suggestions/:id/schedule - Mark suggestion as scheduled
+router.post('/meeting-suggestions/:id/schedule', requireRole('manager'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { scheduledAt } = req.body;
+    const managerEmployeeId = req.user.employeeId;
+
+    // Verify the meeting suggestion belongs to this manager
+    const suggestionResult = await db.query(`
+      SELECT ms.*, e.first_name, e.last_name, zh.zone, zh.burnout_score, zh.readiness_score
+      FROM meeting_suggestions ms
+      JOIN employees e ON ms.employee_id = e.id
+      LEFT JOIN LATERAL (
+        SELECT zone, burnout_score, readiness_score
+        FROM zone_history
+        WHERE employee_id = ms.employee_id
+        ORDER BY date DESC
+        LIMIT 1
+      ) zh ON true
+      WHERE ms.id = $1 AND ms.manager_id = $2
+    `, [id, managerEmployeeId]);
+
+    if (suggestionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'Meeting suggestion not found' });
+    }
+
+    const suggestion = suggestionResult.rows[0];
+
+    // Create an intervention record
+    const interventionResult = await db.query(`
+      INSERT INTO manager_interventions (
+        manager_id, employee_id, meeting_suggestion_id, meeting_type,
+        scheduled_at, employee_zone_before, burnout_score_before, readiness_score_before, status
+      )
+      VALUES ($1, $2, $3, '1:1', $4, $5, $6, $7, 'scheduled')
+      RETURNING id
+    `, [
+      managerEmployeeId,
+      suggestion.employee_id,
+      id,
+      scheduledAt || new Date(),
+      suggestion.zone,
+      suggestion.burnout_score,
+      suggestion.readiness_score,
+    ]);
+
+    const interventionId = interventionResult.rows[0].id;
+
+    // Update the meeting suggestion
+    await db.query(`
+      UPDATE meeting_suggestions
+      SET status = 'scheduled', scheduled_at = $1, intervention_id = $2
+      WHERE id = $3
+    `, [scheduledAt || new Date(), interventionId, id]);
+
+    res.json({
+      success: true,
+      message: 'Meeting scheduled successfully',
+      interventionId,
+    });
+  } catch (err) {
+    console.error('Schedule meeting error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to schedule meeting' });
+  }
+});
+
+// POST /api/teams/meeting-suggestions/:id/complete - Log meeting outcome
+router.post('/meeting-suggestions/:id/complete', requireRole('manager'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      outcomeRating,
+      outcomeNotes,
+      topicsDiscussed,
+      actionItems,
+      followUpNeeded,
+      followUpDate,
+      durationMinutes,
+    } = req.body;
+    const managerEmployeeId = req.user.employeeId;
+
+    // Get the meeting suggestion and associated intervention
+    const suggestionResult = await db.query(`
+      SELECT ms.*, mi.id as intervention_id
+      FROM meeting_suggestions ms
+      LEFT JOIN manager_interventions mi ON ms.intervention_id = mi.id
+      WHERE ms.id = $1 AND ms.manager_id = $2
+    `, [id, managerEmployeeId]);
+
+    if (suggestionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'Meeting suggestion not found' });
+    }
+
+    const suggestion = suggestionResult.rows[0];
+    let interventionId = suggestion.intervention_id;
+
+    // If no intervention exists yet, create one (for meetings that weren't formally scheduled)
+    if (!interventionId) {
+      // Get employee's current zone
+      const zoneResult = await db.query(`
+        SELECT zone, burnout_score, readiness_score
+        FROM zone_history
+        WHERE employee_id = $1
+        ORDER BY date DESC
+        LIMIT 1
+      `, [suggestion.employee_id]);
+
+      const currentZone = zoneResult.rows[0];
+
+      const interventionResult = await db.query(`
+        INSERT INTO manager_interventions (
+          manager_id, employee_id, meeting_suggestion_id, meeting_type,
+          scheduled_at, completed_at, employee_zone_before, burnout_score_before,
+          readiness_score_before, status, outcome_rating, outcome_notes,
+          topics_discussed, action_items, follow_up_needed, follow_up_date, duration_minutes
+        )
+        VALUES ($1, $2, $3, '1:1', NOW(), NOW(), $4, $5, $6, 'completed', $7, $8, $9, $10, $11, $12, $13)
+        RETURNING id
+      `, [
+        managerEmployeeId,
+        suggestion.employee_id,
+        id,
+        currentZone?.zone,
+        currentZone?.burnout_score,
+        currentZone?.readiness_score,
+        outcomeRating,
+        outcomeNotes,
+        JSON.stringify(topicsDiscussed || []),
+        JSON.stringify(actionItems || []),
+        followUpNeeded || false,
+        followUpDate,
+        durationMinutes,
+      ]);
+
+      interventionId = interventionResult.rows[0].id;
+    } else {
+      // Update existing intervention
+      await db.query(`
+        UPDATE manager_interventions
+        SET completed_at = NOW(), status = 'completed', outcome_rating = $1,
+            outcome_notes = $2, topics_discussed = $3, action_items = $4,
+            follow_up_needed = $5, follow_up_date = $6, duration_minutes = $7,
+            updated_at = NOW()
+        WHERE id = $8
+      `, [
+        outcomeRating,
+        outcomeNotes,
+        JSON.stringify(topicsDiscussed || []),
+        JSON.stringify(actionItems || []),
+        followUpNeeded || false,
+        followUpDate,
+        durationMinutes,
+        interventionId,
+      ]);
+    }
+
+    // Update meeting suggestion status
+    await db.query(`
+      UPDATE meeting_suggestions
+      SET status = 'completed', intervention_id = $1
+      WHERE id = $2
+    `, [interventionId, id]);
+
+    res.json({
+      success: true,
+      message: 'Meeting outcome logged successfully',
+      interventionId,
+    });
+  } catch (err) {
+    console.error('Complete meeting error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to log meeting outcome' });
+  }
+});
+
+// ============================================
+// INTERVENTION HISTORY & EFFECTIVENESS
+// ============================================
+
+// GET /api/teams/interventions - Get intervention history with effectiveness tracking
+router.get('/interventions', requireRole('manager'), async (req, res) => {
+  try {
+    const managerEmployeeId = req.user.employeeId;
+    const { employeeId, status, limit = 50 } = req.query;
+
+    let query = `
+      SELECT
+        mi.*,
+        e.first_name,
+        e.last_name,
+        e.email,
+        zh_after.zone as current_zone,
+        zh_after.burnout_score as current_burnout_score,
+        zh_after.readiness_score as current_readiness_score
+      FROM manager_interventions mi
+      JOIN employees e ON mi.employee_id = e.id
+      LEFT JOIN LATERAL (
+        SELECT zone, burnout_score, readiness_score
+        FROM zone_history
+        WHERE employee_id = mi.employee_id
+        ORDER BY date DESC
+        LIMIT 1
+      ) zh_after ON true
+      WHERE mi.manager_id = $1
+    `;
+
+    const params = [managerEmployeeId];
+    let paramIndex = 2;
+
+    if (employeeId) {
+      query += ` AND mi.employee_id = $${paramIndex}`;
+      params.push(employeeId);
+      paramIndex++;
+    }
+
+    if (status) {
+      query += ` AND mi.status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY mi.created_at DESC LIMIT $${paramIndex}`;
+    params.push(parseInt(limit));
+
+    const result = await db.query(query, params);
+
+    // Calculate effectiveness for completed interventions that haven't been calculated yet
+    const interventions = await Promise.all(result.rows.map(async (row) => {
+      // If completed and 7+ days have passed, calculate effectiveness if not already done
+      if (row.status === 'completed' && !row.effectiveness_calculated_at && row.completed_at) {
+        const daysSinceCompletion = Math.floor(
+          (new Date() - new Date(row.completed_at)) / (1000 * 60 * 60 * 24)
+        );
+
+        if (daysSinceCompletion >= 7) {
+          // Get the employee's zone from 7 days after the meeting
+          const afterResult = await db.query(`
+            SELECT zone, burnout_score, readiness_score
+            FROM zone_history
+            WHERE employee_id = $1
+              AND date >= ($2::date + INTERVAL '7 days')
+            ORDER BY date ASC
+            LIMIT 1
+          `, [row.employee_id, row.completed_at]);
+
+          if (afterResult.rows.length > 0) {
+            const afterData = afterResult.rows[0];
+            const burnoutBefore = parseFloat(row.burnout_score_before) || 50;
+            const burnoutAfter = parseFloat(afterData.burnout_score) || 50;
+            const improvementScore = burnoutBefore - burnoutAfter; // Positive = improved
+
+            await db.query(`
+              UPDATE manager_interventions
+              SET employee_zone_after = $1, burnout_score_after = $2,
+                  readiness_score_after = $3, improvement_score = $4,
+                  effectiveness_calculated_at = NOW()
+              WHERE id = $5
+            `, [
+              afterData.zone,
+              afterData.burnout_score,
+              afterData.readiness_score,
+              improvementScore,
+              row.id,
+            ]);
+
+            row.employee_zone_after = afterData.zone;
+            row.burnout_score_after = afterData.burnout_score;
+            row.readiness_score_after = afterData.readiness_score;
+            row.improvement_score = improvementScore;
+          }
+        }
+      }
+
+      return {
+        id: row.id,
+        employeeId: row.employee_id,
+        employeeName: `${row.first_name} ${row.last_name}`,
+        employeeEmail: row.email,
+        meetingType: row.meeting_type,
+        scheduledAt: row.scheduled_at,
+        completedAt: row.completed_at,
+        durationMinutes: row.duration_minutes,
+        status: row.status,
+        // Before metrics
+        zoneBefore: row.employee_zone_before,
+        burnoutScoreBefore: row.burnout_score_before ? parseFloat(row.burnout_score_before) : null,
+        readinessScoreBefore: row.readiness_score_before ? parseFloat(row.readiness_score_before) : null,
+        // Outcome
+        outcomeRating: row.outcome_rating,
+        outcomeNotes: row.outcome_notes,
+        topicsDiscussed: row.topics_discussed,
+        actionItems: row.action_items,
+        followUpNeeded: row.follow_up_needed,
+        followUpDate: row.follow_up_date,
+        // Effectiveness tracking
+        zoneAfter: row.employee_zone_after,
+        burnoutScoreAfter: row.burnout_score_after ? parseFloat(row.burnout_score_after) : null,
+        readinessScoreAfter: row.readiness_score_after ? parseFloat(row.readiness_score_after) : null,
+        improvementScore: row.improvement_score ? parseFloat(row.improvement_score) : null,
+        effectivenessCalculated: !!row.effectiveness_calculated_at,
+        // Current status
+        currentZone: row.current_zone,
+        currentBurnoutScore: row.current_burnout_score ? parseFloat(row.current_burnout_score) : null,
+        createdAt: row.created_at,
+      };
+    }));
+
+    // Calculate aggregate effectiveness stats
+    const completedWithEffectiveness = interventions.filter(i => i.improvementScore !== null);
+    const stats = {
+      totalInterventions: interventions.length,
+      completedInterventions: interventions.filter(i => i.status === 'completed').length,
+      averageOutcomeRating: interventions
+        .filter(i => i.outcomeRating)
+        .reduce((sum, i, _, arr) => sum + i.outcomeRating / arr.length, 0) || null,
+      averageImprovement: completedWithEffectiveness.length > 0
+        ? completedWithEffectiveness.reduce((sum, i) => sum + i.improvementScore, 0) / completedWithEffectiveness.length
+        : null,
+      effectiveInterventions: completedWithEffectiveness.filter(i => i.improvementScore > 0).length,
+    };
+
+    res.json({
+      interventions,
+      stats,
+    });
+  } catch (err) {
+    console.error('Get interventions error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to get interventions' });
+  }
+});
+
+// ============================================
+// CONVERSATION TEMPLATES
+// ============================================
+
+// GET /api/teams/conversation-templates - Get conversation templates by zone
+router.get('/conversation-templates', requireRole('manager'), async (req, res) => {
+  try {
+    const { zone, category, urgency } = req.query;
+
+    let query = `
+      SELECT *
+      FROM conversation_templates
+      WHERE is_active = true
+    `;
+
+    const params = [];
+    let paramIndex = 1;
+
+    if (zone) {
+      query += ` AND zone = $${paramIndex}`;
+      params.push(zone);
+      paramIndex++;
+    }
+
+    if (category) {
+      query += ` AND category = $${paramIndex}`;
+      params.push(category);
+      paramIndex++;
+    }
+
+    if (urgency) {
+      query += ` AND urgency = $${paramIndex}`;
+      params.push(urgency);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY zone, display_order, title`;
+
+    const result = await db.query(query, params);
+
+    const templates = result.rows.map(row => ({
+      id: row.id,
+      zone: row.zone,
+      urgency: row.urgency,
+      title: row.title,
+      description: row.description,
+      openingQuestions: row.opening_questions,
+      talkingPoints: row.talking_points,
+      actionsToSuggest: row.actions_to_suggest,
+      category: row.category,
+    }));
+
+    res.json(templates);
+  } catch (err) {
+    console.error('Get conversation templates error:', err);
+    res.status(500).json({ error: 'Server Error', message: 'Failed to get templates' });
+  }
+});
+
 module.exports = router;
