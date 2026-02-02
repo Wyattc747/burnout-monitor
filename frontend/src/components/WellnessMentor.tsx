@@ -4,8 +4,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import { MessageCircle, Send, Phone, X, Smartphone, ChevronRight, Calendar, TrendingUp, Heart, Plus } from 'lucide-react';
+import { chatApi } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 interface Message {
   id: string;
@@ -204,7 +205,7 @@ export function WellnessMentorDemo({ onClose }: { onClose: () => void }) {
   const addLifeEvent = async (eventType: string, eventLabel: string, impactLevel: 'low' | 'medium' | 'high') => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('${API_URL}/api/personalization/life-events', {
+      const res = await fetch(`${API_URL}/personalization/life-events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -279,41 +280,50 @@ export function WellnessMentorDemo({ onClose }: { onClose: () => void }) {
     };
 
     const currentInput = inputText;
-    setMessages([...messages, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputText('');
     setIsTyping(true);
 
-    // Detect if this is a life event
-    const detectedEvent = detectLifeEvent(currentInput);
-    const isEventRequest = isLifeEventRequest(currentInput);
+    try {
+      // Build conversation history for ChatGPT context
+      const conversationHistory = messages.map((m) => ({
+        type: m.type === 'mentor' ? 'bot' : 'user',
+        content: m.text,
+      }));
 
-    // If we detected an event type and user seems to be reporting it
-    if (detectedEvent && isEventRequest) {
-      // Actually add the event to the backend
-      console.log('Adding life event:', detectedEvent);
-      const success = await addLifeEvent(detectedEvent.type, detectedEvent.label, detectedEvent.impact);
-      console.log('Life event added:', success);
+      // Call the ChatGPT-powered chat API
+      const response = await chatApi.sendMessage(currentInput, conversationHistory);
 
-      setTimeout(() => {
-        const mentorResponse: Message = {
-          id: Date.now().toString(),
-          type: 'mentor',
-          text: success
-            ? `Done! I've added "${detectedEvent.label}" to your life events starting today. This helps me understand changes in your metrics and adjust your wellness predictions. Check your dashboard - it should update automatically!`
-            : `I tried to add "${detectedEvent.label}" but encountered an issue. Please make sure you're logged in, or try adding it directly from your dashboard.`,
-          timestamp: new Date(),
-          action: success ? { type: 'life_event', data: { eventType: detectedEvent.type, label: detectedEvent.label } } : undefined,
-        };
-        setMessages((prev) => [...prev, mentorResponse]);
-        setIsTyping(false);
-      }, 1500);
-    } else {
-      // Regular response
-      setTimeout(() => {
-        const mentorResponse = generateMentorResponse(currentInput);
-        setMessages((prev) => [...prev, mentorResponse]);
-        setIsTyping(false);
-      }, 1500);
+      const mentorResponse: Message = {
+        id: Date.now().toString(),
+        type: 'mentor',
+        text: response.response,
+        timestamp: new Date(),
+        action: response.action ? {
+          type: response.action.type as 'life_event' | 'checkin' | 'data_request' | 'recommendation',
+          data: response.action.result,
+        } : undefined,
+      };
+
+      // Invalidate queries if an action was taken
+      if (response.action) {
+        queryClient.invalidateQueries({ queryKey: ['personalization'] });
+        queryClient.invalidateQueries({ queryKey: ['employee'] });
+      }
+
+      setMessages((prev) => [...prev, mentorResponse]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      // Fallback to local response if API fails
+      const fallbackResponse: Message = {
+        id: Date.now().toString(),
+        type: 'mentor',
+        text: "I'm having trouble connecting right now. Please try again in a moment, or check your internet connection.",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, fallbackResponse]);
+    } finally {
+      setIsTyping(false);
     }
   };
 
