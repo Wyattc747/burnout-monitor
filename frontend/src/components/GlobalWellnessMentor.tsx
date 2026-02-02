@@ -41,18 +41,21 @@ export function GlobalWellnessMentor() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Get the user's first name from the employee data
+  const firstName = user?.employee?.firstName || 'there';
+
   // Initialize with welcome message when opened
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const welcomeMessage: Message = {
         id: '1',
         type: 'bot',
-        content: `Hi ${user.firstName || 'there'}! I'm Shepherd, your wellness mentor. I can help you understand your wellness data, add life events, track how you're feeling, and provide personalized recommendations.\n\nWhat would you like to talk about?`,
+        content: `Hi ${firstName}! I'm Shepherd, your wellness mentor. I can help you understand your wellness data, add life events, track how you're feeling, and provide personalized recommendations.\n\nWhat would you like to talk about?`,
         timestamp: new Date(),
       };
       setMessages([welcomeMessage]);
     }
-  }, [isOpen, messages.length, user.firstName]);
+  }, [isOpen, messages.length, firstName]);
 
   const handleSend = async (message: string = input) => {
     if (!message.trim() || isTyping) return;
