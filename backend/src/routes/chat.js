@@ -6,6 +6,264 @@ const db = require('../utils/db');
 // OpenAI integration
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
+// Define available functions/tools for the AI
+const AVAILABLE_FUNCTIONS = [
+  {
+    type: 'function',
+    function: {
+      name: 'add_life_event',
+      description: 'Add a life event that affects the user wellness expectations. Use this when the user mentions starting something new like a new baby, moving, new job, dealing with health issues, major deadlines, etc.',
+      parameters: {
+        type: 'object',
+        properties: {
+          eventType: {
+            type: 'string',
+            enum: ['new_baby', 'moving', 'major_deadline', 'health_issue', 'family_care', 'bereavement', 'wedding_planning', 'new_job_role', 'vacation_recovery', 'illness_recovery'],
+            description: 'The type of life event'
+          },
+          eventLabel: {
+            type: 'string',
+            description: 'A human-readable label for the event'
+          },
+          notes: {
+            type: 'string',
+            description: 'Optional notes about the event'
+          }
+        },
+        required: ['eventType', 'eventLabel']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_wellness_score',
+      description: 'Get the user current wellness score and zone status. Use this when the user asks about their score, how they are doing, or wants to check their status.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_recommendations',
+      description: 'Get personalized wellness recommendations based on the user current state. Use this when the user asks for advice, tips, or what they should do.',
+      parameters: {
+        type: 'object',
+        properties: {
+          topic: {
+            type: 'string',
+            enum: ['sleep', 'stress', 'exercise', 'workload', 'general'],
+            description: 'The topic area for recommendations'
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'log_feeling_checkin',
+      description: 'Log how the user is feeling right now. Use this when the user describes their current mood or energy level.',
+      parameters: {
+        type: 'object',
+        properties: {
+          overallFeeling: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 5,
+            description: 'Overall feeling from 1 (very bad) to 5 (great)'
+          },
+          energyLevel: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 5,
+            description: 'Energy level from 1 (exhausted) to 5 (energized)'
+          },
+          stressLevel: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 5,
+            description: 'Stress level from 1 (very stressed) to 5 (calm)'
+          },
+          notes: {
+            type: 'string',
+            description: 'Optional notes about how they are feeling'
+          }
+        },
+        required: ['overallFeeling']
+      }
+    }
+  }
+];
+
+// Function implementations
+async function executeFunction(functionName, args, employeeId, userId) {
+  switch (functionName) {
+    case 'add_life_event':
+      return await addLifeEvent(args, employeeId);
+    case 'get_wellness_score':
+      return await getWellnessScore(employeeId);
+    case 'get_recommendations':
+      return await getRecommendations(args, employeeId);
+    case 'log_feeling_checkin':
+      return await logFeelingCheckin(args, employeeId);
+    default:
+      return { error: 'Unknown function' };
+  }
+}
+
+async function addLifeEvent(args, employeeId) {
+  try {
+    // Get default adjustments from template
+    const templateResult = await db.query(
+      'SELECT * FROM life_event_templates WHERE event_type = $1',
+      [args.eventType]
+    );
+
+    const template = templateResult.rows[0];
+    const today = new Date().toISOString().split('T')[0];
+
+    // Calculate end date based on template suggestion
+    let endDate = null;
+    if (template?.suggested_duration_days) {
+      const end = new Date();
+      end.setDate(end.getDate() + template.suggested_duration_days);
+      endDate = end.toISOString().split('T')[0];
+    }
+
+    await db.query(`
+      INSERT INTO life_events (
+        employee_id, event_type, event_label, start_date, end_date,
+        sleep_adjustment, work_adjustment, exercise_adjustment,
+        stress_tolerance_adjustment, notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `, [
+      employeeId,
+      args.eventType,
+      args.eventLabel,
+      today,
+      endDate,
+      template?.default_sleep_adjustment || 0,
+      template?.default_work_adjustment || 0,
+      template?.default_exercise_adjustment || 0,
+      template?.default_stress_tolerance_adjustment || 0,
+      args.notes || null
+    ]);
+
+    return {
+      success: true,
+      message: `I've added "${args.eventLabel}" to your life events. Your wellness expectations will be adjusted accordingly - I'll be more understanding about sleep and exercise during this time.`,
+      eventType: args.eventType,
+      adjustments: template ? {
+        sleep: template.default_sleep_adjustment,
+        work: template.default_work_adjustment,
+        exercise: template.default_exercise_adjustment
+      } : null
+    };
+  } catch (error) {
+    console.error('Add life event error:', error);
+    return { success: false, error: 'Failed to add life event' };
+  }
+}
+
+async function getWellnessScore(employeeId) {
+  try {
+    const result = await db.query(`
+      SELECT zone, burnout_score, readiness_score, explanation, date
+      FROM zone_history
+      WHERE employee_id = $1
+      ORDER BY date DESC
+      LIMIT 1
+    `, [employeeId]);
+
+    if (result.rows.length === 0) {
+      return { success: true, message: 'No wellness data available yet.' };
+    }
+
+    const data = result.rows[0];
+    const wellnessScore = Math.round(100 - data.burnout_score);
+
+    return {
+      success: true,
+      zone: data.zone,
+      wellnessScore,
+      burnoutScore: Math.round(data.burnout_score),
+      readinessScore: Math.round(data.readiness_score),
+      factors: data.explanation?.factors || [],
+      message: `Your wellness score is ${wellnessScore}/100 and you're in the ${data.zone.toUpperCase()} zone.`
+    };
+  } catch (error) {
+    console.error('Get wellness score error:', error);
+    return { success: false, error: 'Failed to get wellness score' };
+  }
+}
+
+async function getRecommendations(args, employeeId) {
+  try {
+    // Get current zone
+    const zoneResult = await db.query(`
+      SELECT zone, burnout_score FROM zone_history
+      WHERE employee_id = $1
+      ORDER BY date DESC LIMIT 1
+    `, [employeeId]);
+
+    const zone = zoneResult.rows[0]?.zone || 'yellow';
+    const topic = args.topic || 'general';
+
+    // Get relevant wellness resources
+    const resourcesResult = await db.query(`
+      SELECT title, description, content, duration_minutes
+      FROM wellness_resources
+      WHERE category = $1 OR category = 'general'
+      ORDER BY RANDOM()
+      LIMIT 2
+    `, [topic === 'general' ? 'stress' : topic]);
+
+    return {
+      success: true,
+      zone,
+      topic,
+      resources: resourcesResult.rows,
+      message: `Based on your ${zone} zone status, here are some recommendations for ${topic}.`
+    };
+  } catch (error) {
+    console.error('Get recommendations error:', error);
+    return { success: false, error: 'Failed to get recommendations' };
+  }
+}
+
+async function logFeelingCheckin(args, employeeId) {
+  try {
+    await db.query(`
+      INSERT INTO feeling_checkins (
+        employee_id, overall_feeling, energy_level, stress_level, notes
+      ) VALUES ($1, $2, $3, $4, $5)
+    `, [
+      employeeId,
+      args.overallFeeling,
+      args.energyLevel || null,
+      args.stressLevel || null,
+      args.notes || null
+    ]);
+
+    const feelingLabels = ['', 'struggling', 'not great', 'okay', 'good', 'great'];
+
+    return {
+      success: true,
+      message: `I've logged that you're feeling ${feelingLabels[args.overallFeeling]}. Thanks for checking in - tracking how you feel helps us personalize your experience.`,
+      feeling: args.overallFeeling
+    };
+  } catch (error) {
+    console.error('Log feeling checkin error:', error);
+    return { success: false, error: 'Failed to log check-in' };
+  }
+}
+
 // System prompt for the wellness mentor
 const SYSTEM_PROMPT = `You are Shepherd, a compassionate and knowledgeable wellness mentor for a workplace wellness app called ShepHerd. Your role is to help employees manage stress, improve sleep, maintain work-life balance, and prevent burnout.
 
@@ -116,7 +374,7 @@ Respond to their message with personalized, helpful advice.`;
     // Add current message
     messages.push({ role: 'user', content: message });
 
-    // Call OpenAI API
+    // Call OpenAI API with function calling
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -126,6 +384,8 @@ Respond to their message with personalized, helpful advice.`;
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages,
+        tools: AVAILABLE_FUNCTIONS,
+        tool_choice: 'auto',
         max_tokens: 500,
         temperature: 0.7,
       })
@@ -144,7 +404,66 @@ Respond to their message with personalized, helpful advice.`;
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0]?.message?.content || getFallbackResponse(message, currentZone.zone, employee.first_name);
+    const assistantMessage = data.choices[0]?.message;
+
+    // Check if the AI wants to call a function
+    if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+      const toolCall = assistantMessage.tool_calls[0];
+      const functionName = toolCall.function.name;
+      const functionArgs = JSON.parse(toolCall.function.arguments);
+
+      // Execute the function
+      const functionResult = await executeFunction(functionName, functionArgs, employee.id, userId);
+
+      // Send the result back to OpenAI to get a natural language response
+      messages.push(assistantMessage);
+      messages.push({
+        role: 'tool',
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(functionResult)
+      });
+
+      const followUpResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages,
+          max_tokens: 500,
+          temperature: 0.7,
+        })
+      });
+
+      if (followUpResponse.ok) {
+        const followUpData = await followUpResponse.json();
+        const finalResponse = followUpData.choices[0]?.message?.content || functionResult.message;
+
+        return res.json({
+          response: finalResponse,
+          zone: currentZone.zone,
+          action: {
+            type: functionName,
+            result: functionResult
+          }
+        });
+      }
+
+      // If follow-up fails, return the function result message directly
+      return res.json({
+        response: functionResult.message || 'Action completed.',
+        zone: currentZone.zone,
+        action: {
+          type: functionName,
+          result: functionResult
+        }
+      });
+    }
+
+    // No function call - just return the AI response
+    const aiResponse = assistantMessage.content || getFallbackResponse(message, currentZone.zone, employee.first_name);
 
     res.json({
       response: aiResponse,
