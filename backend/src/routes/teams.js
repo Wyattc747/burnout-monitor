@@ -2,19 +2,21 @@ const express = require('express');
 const crypto = require('crypto');
 const db = require('../utils/db');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { requireOrganization } = require('../middleware/tenant');
 const aggregateService = require('../services/aggregateService');
 
 const router = express.Router();
 
-// All routes require authentication
+// All routes require authentication and organization membership
 router.use(authenticate);
+router.use(requireOrganization);
 
 // ============================================
 // TEAM MANAGEMENT (Manager only)
 // ============================================
 
 // GET /api/teams/members - Get manager's team members
-router.get('/members', requireRole('manager'), async (req, res) => {
+router.get('/members', requireRole('manager', 'admin', 'super_admin'), async (req, res) => {
   try {
     const managerEmployeeId = req.user.employeeId;
 
@@ -38,9 +40,9 @@ router.get('/members', requireRole('manager'), async (req, res) => {
         ORDER BY date DESC
         LIMIT 1
       ) zh ON true
-      WHERE e.manager_id = $1 AND e.is_active = true
+      WHERE e.manager_id = $1 AND e.is_active = true AND e.organization_id = $2
       ORDER BY e.last_name, e.first_name
-    `, [managerEmployeeId]);
+    `, [managerEmployeeId, req.user.organizationId]);
 
     const members = result.rows.map(row => ({
       id: row.id,
@@ -63,7 +65,7 @@ router.get('/members', requireRole('manager'), async (req, res) => {
 });
 
 // GET /api/teams/available - Get employees not on any team
-router.get('/available', requireRole('manager'), async (req, res) => {
+router.get('/available', requireRole('manager', 'admin', 'super_admin'), async (req, res) => {
   try {
     const result = await db.query(`
       SELECT
@@ -77,8 +79,9 @@ router.get('/available', requireRole('manager'), async (req, res) => {
       WHERE e.manager_id IS NULL
         AND e.is_active = true
         AND e.id != $1
+        AND e.organization_id = $2
       ORDER BY e.last_name, e.first_name
-    `, [req.user.employeeId]);
+    `, [req.user.employeeId, req.user.organizationId]);
 
     const employees = result.rows.map(row => ({
       id: row.id,
@@ -97,15 +100,15 @@ router.get('/available', requireRole('manager'), async (req, res) => {
 });
 
 // POST /api/teams/members/:employeeId - Add employee to team
-router.post('/members/:employeeId', requireRole('manager'), async (req, res) => {
+router.post('/members/:employeeId', requireRole('manager', 'admin', 'super_admin'), async (req, res) => {
   try {
     const { employeeId } = req.params;
     const managerEmployeeId = req.user.employeeId;
 
-    // Check if employee exists and isn't already on a team
+    // Check if employee exists and isn't already on a team (same organization)
     const employeeResult = await db.query(`
-      SELECT id, manager_id FROM employees WHERE id = $1 AND is_active = true
-    `, [employeeId]);
+      SELECT id, manager_id FROM employees WHERE id = $1 AND is_active = true AND organization_id = $2
+    `, [employeeId, req.user.organizationId]);
 
     if (employeeResult.rows.length === 0) {
       return res.status(404).json({ error: 'Not Found', message: 'Employee not found' });

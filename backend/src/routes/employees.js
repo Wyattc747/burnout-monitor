@@ -1,16 +1,19 @@
 const express = require('express');
 const db = require('../utils/db');
 const { authenticate, requireRole, canAccessEmployee, canAccessHealthData } = require('../middleware/auth');
+const { requireOrganization } = require('../middleware/tenant');
 const { calculateEmployeeScores, calculateEmployeeScoresPersonalized } = require('../services/scoringEngine');
 
 const router = express.Router();
 
-// All routes require authentication
+// All routes require authentication AND organization membership
 router.use(authenticate);
+router.use(requireOrganization);
 
-// GET /api/employees - List all employees (manager only)
+// GET /api/employees - List all employees (manager only, same organization)
 router.get('/', requireRole('manager'), async (req, res) => {
   try {
+    // SECURITY: Filter by organization_id to ensure tenant isolation
     const result = await db.query(`
       SELECT
         e.id,
@@ -30,9 +33,9 @@ router.get('/', requireRole('manager'), async (req, res) => {
         ORDER BY date DESC
         LIMIT 1
       ) zh ON true
-      WHERE e.is_active = true
+      WHERE e.is_active = true AND e.organization_id = $1
       ORDER BY e.last_name, e.first_name
-    `);
+    `, [req.user.organizationId]);
 
     const employees = result.rows.map(row => ({
       id: row.id,
@@ -53,11 +56,12 @@ router.get('/', requireRole('manager'), async (req, res) => {
   }
 });
 
-// GET /api/employees/:id - Get employee details
+// GET /api/employees/:id - Get employee details (same organization only)
 router.get('/:id', canAccessEmployee, async (req, res) => {
   try {
     const { id } = req.params;
 
+    // SECURITY: Filter by organization_id to ensure tenant isolation
     const result = await db.query(`
       SELECT
         e.id,
@@ -66,13 +70,20 @@ router.get('/:id', canAccessEmployee, async (req, res) => {
         e.email,
         e.phone,
         e.department,
+        e.department_id,
         e.job_title,
         e.hire_date,
+        e.manager_id,
+        d.name as department_name,
+        m.first_name as manager_first_name,
+        m.last_name as manager_last_name,
         zh.zone,
         zh.burnout_score,
         zh.readiness_score,
         zh.date as status_date
       FROM employees e
+      LEFT JOIN departments d ON e.department_id = d.id
+      LEFT JOIN employees m ON e.manager_id = m.id
       LEFT JOIN LATERAL (
         SELECT zone, burnout_score, readiness_score, date
         FROM zone_history
@@ -80,8 +91,8 @@ router.get('/:id', canAccessEmployee, async (req, res) => {
         ORDER BY date DESC
         LIMIT 1
       ) zh ON true
-      WHERE e.id = $1 AND e.is_active = true
-    `, [id]);
+      WHERE e.id = $1 AND e.is_active = true AND e.organization_id = $2
+    `, [id, req.user.organizationId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Not Found', message: 'Employee not found' });
@@ -95,8 +106,14 @@ router.get('/:id', canAccessEmployee, async (req, res) => {
       email: row.email,
       phone: row.phone,
       department: row.department,
+      departmentId: row.department_id,
+      departmentName: row.department_name,
       jobTitle: row.job_title,
       hireDate: row.hire_date,
+      managerId: row.manager_id,
+      managerName: row.manager_first_name
+        ? `${row.manager_first_name} ${row.manager_last_name}`
+        : null,
       zone: row.zone || 'yellow',
       burnoutScore: row.burnout_score ? parseFloat(row.burnout_score) : null,
       readinessScore: row.readiness_score ? parseFloat(row.readiness_score) : null,
@@ -108,11 +125,20 @@ router.get('/:id', canAccessEmployee, async (req, res) => {
   }
 });
 
-// GET /api/employees/:id/health - Get health metrics (PRIVATE - employee only)
+// GET /api/employees/:id/health - Get health metrics (PRIVATE - employee only, same organization)
 router.get('/:id/health', canAccessHealthData, async (req, res) => {
   try {
     const { id } = req.params;
     const { startDate, endDate, limit = 30 } = req.query;
+
+    // SECURITY: Verify employee belongs to same organization before accessing health data
+    const empCheck = await db.query(
+      'SELECT id FROM employees WHERE id = $1 AND organization_id = $2',
+      [id, req.user.organizationId]
+    );
+    if (empCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'Employee not found' });
+    }
 
     let query = `
       SELECT
@@ -177,11 +203,20 @@ router.get('/:id/health', canAccessHealthData, async (req, res) => {
   }
 });
 
-// GET /api/employees/:id/work - Get work metrics
+// GET /api/employees/:id/work - Get work metrics (same organization only)
 router.get('/:id/work', canAccessEmployee, async (req, res) => {
   try {
     const { id } = req.params;
     const { startDate, endDate, limit = 30 } = req.query;
+
+    // SECURITY: Verify employee belongs to same organization
+    const empCheck = await db.query(
+      'SELECT id FROM employees WHERE id = $1 AND organization_id = $2',
+      [id, req.user.organizationId]
+    );
+    if (empCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'Employee not found' });
+    }
 
     let query = `
       SELECT
@@ -242,11 +277,20 @@ router.get('/:id/work', canAccessEmployee, async (req, res) => {
   }
 });
 
-// GET /api/employees/:id/email-metrics - Get email metrics (for managers)
+// GET /api/employees/:id/email-metrics - Get email metrics (for managers, same organization only)
 router.get('/:id/email-metrics', canAccessEmployee, async (req, res) => {
   try {
     const { id } = req.params;
     const { limit = 14 } = req.query;
+
+    // SECURITY: Verify employee belongs to same organization
+    const empCheck = await db.query(
+      'SELECT id FROM employees WHERE id = $1 AND organization_id = $2',
+      [id, req.user.organizationId]
+    );
+    if (empCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'Employee not found' });
+    }
 
     const result = await db.query(`
       SELECT
@@ -280,11 +324,20 @@ router.get('/:id/email-metrics', canAccessEmployee, async (req, res) => {
   }
 });
 
-// GET /api/employees/:id/burnout - Get burnout score history
+// GET /api/employees/:id/burnout - Get burnout score history (same organization only)
 router.get('/:id/burnout', canAccessEmployee, async (req, res) => {
   try {
     const { id } = req.params;
     const { limit = 30 } = req.query;
+
+    // SECURITY: Verify employee belongs to same organization
+    const empCheck = await db.query(
+      'SELECT id FROM employees WHERE id = $1 AND organization_id = $2',
+      [id, req.user.organizationId]
+    );
+    if (empCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'Employee not found' });
+    }
 
     const result = await db.query(`
       SELECT date, burnout_score, readiness_score, zone
@@ -319,11 +372,20 @@ router.get('/:id/burnout', canAccessEmployee, async (req, res) => {
   }
 });
 
-// GET /api/employees/:id/readiness - Get readiness score history
+// GET /api/employees/:id/readiness - Get readiness score history (same organization only)
 router.get('/:id/readiness', canAccessEmployee, async (req, res) => {
   try {
     const { id } = req.params;
     const { limit = 30 } = req.query;
+
+    // SECURITY: Verify employee belongs to same organization
+    const empCheck = await db.query(
+      'SELECT id FROM employees WHERE id = $1 AND organization_id = $2',
+      [id, req.user.organizationId]
+    );
+    if (empCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'Employee not found' });
+    }
 
     const result = await db.query(`
       SELECT date, burnout_score, readiness_score, zone
@@ -358,10 +420,19 @@ router.get('/:id/readiness', canAccessEmployee, async (req, res) => {
   }
 });
 
-// GET /api/employees/:id/explanation - Get zone explanation
+// GET /api/employees/:id/explanation - Get zone explanation (same organization only)
 router.get('/:id/explanation', canAccessEmployee, async (req, res) => {
   try {
     const { id } = req.params;
+
+    // SECURITY: Verify employee belongs to same organization
+    const empCheck = await db.query(
+      'SELECT id FROM employees WHERE id = $1 AND organization_id = $2',
+      [id, req.user.organizationId]
+    );
+    if (empCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'Employee not found' });
+    }
 
     // Get latest zone history with explanation
     const zoneResult = await db.query(`
@@ -455,10 +526,19 @@ router.get('/:id/explanation', canAccessEmployee, async (req, res) => {
   }
 });
 
-// GET /api/employees/:id/prediction - Get burnout trajectory prediction
+// GET /api/employees/:id/prediction - Get burnout trajectory prediction (same organization only)
 router.get('/:id/prediction', canAccessEmployee, async (req, res) => {
   try {
     const { id } = req.params;
+
+    // SECURITY: Verify employee belongs to same organization
+    const empCheck = await db.query(
+      'SELECT id FROM employees WHERE id = $1 AND organization_id = $2',
+      [id, req.user.organizationId]
+    );
+    if (empCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'Employee not found' });
+    }
 
     // Get last 14 days of zone history for trend analysis
     const historyResult = await db.query(`
@@ -553,10 +633,19 @@ router.get('/:id/prediction', canAccessEmployee, async (req, res) => {
   }
 });
 
-// GET /api/employees/:id/recommended-resources - Get personalized wellness resource recommendations
+// GET /api/employees/:id/recommended-resources - Get personalized wellness resource recommendations (same organization only)
 router.get('/:id/recommended-resources', canAccessEmployee, async (req, res) => {
   try {
     const { id } = req.params;
+
+    // SECURITY: Verify employee belongs to same organization
+    const empCheck = await db.query(
+      'SELECT id FROM employees WHERE id = $1 AND organization_id = $2',
+      [id, req.user.organizationId]
+    );
+    if (empCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Not Found', message: 'Employee not found' });
+    }
 
     // Get current zone and explanation factors
     const zoneResult = await db.query(`

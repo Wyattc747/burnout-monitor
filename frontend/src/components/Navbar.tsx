@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { clsx } from 'clsx';
-import { LayoutDashboard, Heart, Settings, ChevronDown, TrendingUp, BarChart3, Users, Calendar } from 'lucide-react';
+import { LayoutDashboard, Heart, Settings, ChevronDown, TrendingUp, BarChart3, Users, Calendar, Shield } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { alertsApi } from '@/lib/api';
 import { Avatar } from './Avatar';
 import { ThemeToggle } from './ThemeToggle';
 import { MobileNav, MobileMenuButton } from './MobileNav';
 import { DataFreshnessIndicator } from './DataFreshness';
+import { LogoFull } from './Logo';
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -29,6 +30,7 @@ export function Navbar() {
 
   const unacknowledgedCount = alerts?.filter((a) => !a.isAcknowledged).length || 0;
   const isManager = user?.role === 'manager';
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const displayName = user?.employee
     ? `${user.employee.firstName} ${user.employee.lastName}`
     : user?.email;
@@ -44,11 +46,8 @@ export function Navbar() {
               <MobileMenuButton onClick={() => setShowMobileMenu(true)} />
 
               {/* Logo */}
-              <Link href="/dashboard" className="flex items-center gap-2">
-                <img src="/logo.svg" alt="ShepHerd" className="h-8 w-auto" />
-                <span className="font-bold text-gray-900 dark:text-white hidden sm:inline">
-                  ShepHerd
-                </span>
+              <Link href="/dashboard" className="flex items-center">
+                <LogoFull className="h-8" />
               </Link>
 
               {/* Desktop Nav Links */}
@@ -86,6 +85,11 @@ export function Navbar() {
                 <NavLink href="/settings" active={pathname === '/settings'} icon={<Settings className="w-4 h-4" />}>
                   Settings
                 </NavLink>
+                {isAdmin && (
+                  <NavLink href="/admin/dashboard" active={pathname?.startsWith('/admin') || false} icon={<Shield className="w-4 h-4" />}>
+                    Admin
+                  </NavLink>
+                )}
               </div>
             </div>
 
@@ -188,6 +192,16 @@ export function Navbar() {
                       >
                         Settings
                       </Link>
+                      {isAdmin && (
+                        <Link
+                          href="/admin/dashboard"
+                          className="dropdown-item"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <Shield className="w-4 h-4 inline mr-2" />
+                          Admin Dashboard
+                        </Link>
+                      )}
                       <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
                         <button
                           onClick={() => {

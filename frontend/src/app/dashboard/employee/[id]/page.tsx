@@ -19,13 +19,17 @@ export default function EmployeeDetailPage() {
   const employeeId = params?.id as string;
   const [metricsTab, setMetricsTab] = useState<'hours' | 'tasks' | 'breakdown'>('hours');
 
-  // Only managers can access this page
-  const { user, isLoading: authLoading } = useRequireAuth('manager');
+  // Managers and admins can access this page
+  const { user, isLoading: authLoading } = useRequireAuth({
+    requiredRoles: ['manager', 'admin', 'super_admin'],
+  });
+
+  const canViewEmployee = ['manager', 'admin', 'super_admin'].includes(user?.role || '');
 
   const { data: employee, isLoading } = useQuery({
     queryKey: ['employee', employeeId],
     queryFn: () => employeesApi.getById(employeeId),
-    enabled: !!employeeId && user?.role === 'manager',
+    enabled: !!employeeId && canViewEmployee,
   });
 
   const { data: burnoutData } = useQuery({

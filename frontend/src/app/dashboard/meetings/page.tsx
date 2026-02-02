@@ -11,7 +11,7 @@ import type { Employee } from '@/types';
 import { ChevronLeft, Calendar, Users, Clock, AlertCircle } from 'lucide-react';
 
 export default function MeetingsPage() {
-  const { user, isLoading: authLoading } = useRequireAuth('manager');
+  const { user, isLoading: authLoading } = useRequireAuth({ requiredRoles: ['manager', 'admin', 'super_admin'] });
 
   const { data: employees, isLoading } = useQuery({
     queryKey: ['team-members'],

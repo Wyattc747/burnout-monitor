@@ -1,13 +1,223 @@
+// ============================================
+// CORE TYPES
+// ============================================
+
 export type Zone = 'red' | 'yellow' | 'green';
-export type UserRole = 'manager' | 'employee';
+export type UserRole = 'super_admin' | 'admin' | 'manager' | 'employee';
 export type AlertType = 'burnout' | 'opportunity';
 export type Impact = 'positive' | 'negative' | 'neutral';
+
+// ============================================
+// ORGANIZATION TYPES (B2B)
+// ============================================
+
+export type SubscriptionTier = 'trial' | 'starter' | 'professional' | 'enterprise';
+export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'trialing';
+export type EmploymentStatus = 'pending' | 'active' | 'on_leave' | 'terminated';
+export type HRProvider = 'bamboohr' | 'workday' | 'adp' | 'gusto' | 'rippling';
+export type IntegrationStatus = 'pending' | 'connected' | 'error' | 'disconnected';
+export type SyncFrequency = 'manual' | 'hourly' | 'daily' | 'weekly';
+export type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  domain?: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  subscriptionTier: SubscriptionTier;
+  subscriptionStatus: SubscriptionStatus;
+  trialEndsAt?: string;
+  maxEmployees: number;
+  settings?: Record<string, unknown>;
+  industry?: string;
+  companySize?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Department {
+  id: string;
+  organizationId: string;
+  name: string;
+  code?: string;
+  description?: string;
+  parentDepartmentId?: string;
+  hierarchyLevel: number;
+  hierarchyPath?: string;
+  managerEmployeeId?: string;
+  managerName?: string;
+  isActive: boolean;
+  sortOrder: number;
+  employeeCount?: number;
+  children?: Department[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HRIntegration {
+  id: string;
+  organizationId: string;
+  provider: HRProvider;
+  status: IntegrationStatus;
+  syncFrequency: SyncFrequency;
+  autoSyncEnabled: boolean;
+  lastSyncAt?: string;
+  nextSyncAt?: string;
+  lastError?: string;
+  lastErrorAt?: string;
+  consecutiveFailures: number;
+  fieldMappings?: Record<string, string>;
+  providerSettings?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HRSyncLog {
+  id: string;
+  startedAt: string;
+  completedAt?: string;
+  syncType: 'manual' | 'scheduled' | 'webhook';
+  status: 'running' | 'completed' | 'failed' | 'partial';
+  employeesCreated: number;
+  employeesUpdated: number;
+  employeesDeactivated: number;
+  departmentsSynced: number;
+  errors?: Array<{ type: string; error: string; email?: string }>;
+  summary?: string;
+}
+
+export interface EmployeeInvitation {
+  id: string;
+  organizationId: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: UserRole;
+  departmentId?: string;
+  departmentName?: string;
+  jobTitle?: string;
+  status: InvitationStatus;
+  expiresAt: string;
+  invitedBy?: string;
+  createdAt: string;
+  acceptedAt?: string;
+  inviteUrl?: string;
+}
+
+export interface OrganizationStats {
+  employees: {
+    total: number;
+    active: number;
+    pending: number;
+    onLeave: number;
+  };
+  departments: number;
+  pendingInvitations: number;
+  zones: {
+    red: number;
+    yellow: number;
+    green: number;
+  };
+  unacknowledgedAlerts: number;
+  activeChallenges: number;
+  subscription: {
+    tier: SubscriptionTier;
+    status: SubscriptionStatus;
+    maxEmployees: number;
+    trialEndsAt?: string;
+  };
+}
+
+export interface AuditLogEntry {
+  id: string;
+  userId?: string;
+  userEmail: string;
+  action: string;
+  resourceType: string;
+  resourceId?: string;
+  oldValues?: Record<string, unknown>;
+  newValues?: Record<string, unknown>;
+  ipAddress?: string;
+  createdAt: string;
+}
+
+// ============================================
+// BILLING TYPES
+// ============================================
+
+export interface SubscriptionTierInfo {
+  id: SubscriptionTier;
+  name: string;
+  pricePerEmployee?: number;
+  maxEmployees: number;
+  features: string[];
+}
+
+export interface SubscriptionInfo {
+  tier: SubscriptionTier;
+  tierInfo: SubscriptionTierInfo;
+  status: SubscriptionStatus;
+  trialEndsAt?: string;
+  maxEmployees: number;
+  currentEmployees: number;
+  stripeCustomerId?: string;
+  subscription?: {
+    id: string;
+    status: string;
+    currentPeriodStart: string;
+    currentPeriodEnd: string;
+    cancelAtPeriodEnd: boolean;
+    cancelAt?: string;
+  };
+}
+
+export interface Invoice {
+  id: string;
+  number?: string;
+  status: string;
+  amountDue: number;
+  amountPaid: number;
+  currency: string;
+  created: string;
+  periodStart: string;
+  periodEnd: string;
+  invoicePdf?: string;
+  hostedInvoiceUrl?: string;
+}
+
+export interface UsageStats {
+  employees: {
+    active: number;
+    pending: number;
+    onLeave: number;
+    total: number;
+  };
+  pendingInvitations: number;
+  limits: {
+    maxEmployees: number;
+    remainingSlots: number;
+  };
+  tier: SubscriptionTier;
+}
+
+// ============================================
+// USER & EMPLOYEE TYPES
+// ============================================
 
 export interface User {
   id: string;
   email: string;
   role: UserRole;
   profilePictureUrl?: string;
+  organizationId?: string;
+  organizationName?: string;
+  organizationSlug?: string;
+  organizationLogo?: string;
+  subscriptionTier?: SubscriptionTier;
+  subscriptionStatus?: SubscriptionStatus;
+  isDemoAccount?: boolean;
   employee?: Employee;
 }
 
@@ -18,13 +228,29 @@ export interface Employee {
   email: string;
   phone?: string;
   department: string;
+  departmentId?: string;
+  departmentName?: string;
   jobTitle: string;
   hireDate?: string;
   zone: Zone;
   burnoutScore: number | null;
   readinessScore: number | null;
   statusDate?: string;
+  employmentStatus?: EmploymentStatus;
+  reportsToId?: string;
+  reportsToName?: string;
+  managerId?: string;
+  managerName?: string;
+  hierarchyLevel?: number;
+  hrExternalId?: string;
+  onboardingCompleted?: boolean;
+  role?: UserRole;
+  userId?: string;
 }
+
+// ============================================
+// HEALTH & WORK METRICS
+// ============================================
 
 export interface HealthMetrics {
   date: string;
@@ -119,6 +345,10 @@ export interface Explanation {
   };
 }
 
+// ============================================
+// ALERTS & NOTIFICATIONS
+// ============================================
+
 export interface Alert {
   id: string;
   employeeId: string;
@@ -133,6 +363,17 @@ export interface Alert {
   createdAt: string;
 }
 
+export interface SMSConfig {
+  smsEnabled: boolean;
+  phoneNumber: string | null;
+  onBurnout: boolean;
+  onOpportunity: boolean;
+}
+
+// ============================================
+// AUTHENTICATION
+// ============================================
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -144,23 +385,64 @@ export interface AuthResponse {
     id: string;
     email: string;
     role: UserRole;
+    organizationId?: string;
+    organizationSlug?: string;
+    organizationName?: string;
+    isDemoAccount?: boolean;
+  };
+  organization?: {
+    id: string;
+    name: string;
+    slug: string;
+    subscriptionTier: SubscriptionTier;
+    trialEndsAt?: string;
   };
   employeeId: string | null;
 }
 
-export interface SMSConfig {
-  smsEnabled: boolean;
-  phoneNumber: string | null;
-  onBurnout: boolean;
-  onOpportunity: boolean;
+export interface RegisterOrganizationData {
+  companyName: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  industry?: string;
+  companySize?: string;
+  subdomain?: string;
 }
+
+export interface AcceptInvitationData {
+  token: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface InvitationDetails {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: UserRole;
+  jobTitle?: string;
+  organizationName: string;
+  organizationLogo?: string;
+  departmentName?: string;
+  expiresAt: string;
+}
+
+// ============================================
+// DEMO & MISCELLANEOUS
+// ============================================
 
 export interface DemoState {
   isActive: boolean;
   virtualTime: string | null;
 }
 
-// Personalization Types
+// ============================================
+// PERSONALIZATION TYPES
+// ============================================
+
 export type Chronotype = 'early_bird' | 'neutral' | 'night_owl';
 export type SocialEnergyType = 'introvert' | 'ambivert' | 'extrovert';
 export type SleepFlexibility = 'rigid' | 'moderate' | 'flexible';
@@ -174,7 +456,7 @@ export interface FeelingCheckin {
   stressLevel: number | null;
   motivationLevel: number | null;
   notes: string | null;
-  contextSnapshot: any;
+  contextSnapshot: unknown;
   createdAt: string;
 }
 
@@ -266,7 +548,10 @@ export interface PersonalizationSummary {
   needsSetup: boolean;
 }
 
-// Goal Types
+// ============================================
+// GOAL TYPES
+// ============================================
+
 export type GoalType = 'sleep_hours' | 'exercise_minutes' | 'green_zone' | 'checkin_streak';
 
 export interface Goal {
@@ -292,7 +577,10 @@ export interface GoalSuggestion {
   unit: string;
 }
 
-// Intervention and 1:1 Meeting Types
+// ============================================
+// INTERVENTION AND 1:1 MEETING TYPES
+// ============================================
+
 export type InterventionType = 'check_in' | 'workload_adjustment' | 'time_off' | 'resource_referral' | 'recognition' | 'goal_setting' | 'other';
 export type OutcomeStatus = 'improved' | 'stable' | 'declined' | 'pending';
 
@@ -334,4 +622,44 @@ export interface InterventionOutcome {
   notes: string | null;
   daysToImprovement: number | null;
   recordedAt: string;
+}
+
+// ============================================
+// CHALLENGE TYPES
+// ============================================
+
+export type ChallengeType = 'steps' | 'sleep_hours' | 'checkins' | 'green_zone_days';
+export type CompetitionType = 'individual' | 'team';
+
+export interface Challenge {
+  id: string;
+  title: string;
+  description?: string;
+  challengeType: ChallengeType;
+  competitionType: CompetitionType;
+  targetValue: number;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'completed' | 'cancelled';
+  createdBy: string;
+  teamId?: string;
+  createdAt: string;
+}
+
+export interface ChallengeParticipant {
+  id: string;
+  challengeId: string;
+  employeeId: string;
+  teamName?: string;
+  progress: number;
+  joinedAt: string;
+}
+
+export interface ChallengeLeaderboard {
+  rank: number;
+  employeeId: string;
+  employeeName: string;
+  teamName?: string;
+  progress: number;
+  percentComplete: number;
 }

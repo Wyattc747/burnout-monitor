@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { LogoFull } from '@/components/Logo';
 
 interface FooterLink {
   label: string;
@@ -46,9 +47,8 @@ export function MarketingFooter({ sections = defaultSections }: MarketingFooterP
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <img src="/logo.svg" alt="ShepHerd" className="h-8 w-auto" />
-              <span className="text-xl font-bold">ShepHerd</span>
+            <div className="mb-4">
+              <LogoFull dark />
             </div>
             <p className="text-gray-400 max-w-md">
               Guiding your team to peak performance through intelligent wellness monitoring and proactive burnout prevention.

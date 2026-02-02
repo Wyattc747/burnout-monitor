@@ -85,9 +85,15 @@ export function EmployeeDashboard({ employeeId }: EmployeeDashboardProps) {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Welcome back, {employee.firstName}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            {getGreeting()} Here's your wellness snapshot.
-          </p>
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+            <span>{getGreeting()} Here's your wellness snapshot.</span>
+            {employee.managerName && (
+              <>
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+                <span className="text-sm">Manager: <span className="text-gray-700 dark:text-gray-300">{employee.managerName}</span></span>
+              </>
+            )}
+          </div>
         </div>
         <ZoneBadge zone={employee.zone} size="lg" />
       </div>

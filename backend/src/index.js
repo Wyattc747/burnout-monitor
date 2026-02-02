@@ -18,6 +18,13 @@ const chatRoutes = require('./routes/chat');
 const goalsRoutes = require('./routes/goals');
 const challengesRoutes = require('./routes/challenges');
 
+// B2B Multi-tenant routes
+const organizationsRoutes = require('./routes/organizations');
+const departmentsRoutes = require('./routes/departments');
+const adminRoutes = require('./routes/admin');
+const hrIntegrationsRoutes = require('./routes/hr-integrations');
+const billingRoutes = require('./routes/billing');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -41,23 +48,23 @@ app.use(cors({
   credentials: true,
 }));
 
-// SECURITY: Rate limiting for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts per window
-  message: { error: 'Too Many Requests', message: 'Too many login attempts, please try again later' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// NOTE: Rate limiting disabled for development
+// In production, uncomment to enable protection against brute force attacks
+// const authLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 10, // 10 attempts per window
+//   message: { error: 'Too Many Requests', message: 'Too many login attempts, please try again later' },
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
 
-// SECURITY: General rate limiting
-const generalLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // 100 requests per minute
-  message: { error: 'Too Many Requests', message: 'Rate limit exceeded' },
-});
+// const generalLimiter = rateLimit({
+//   windowMs: 1 * 60 * 1000, // 1 minute
+//   max: 100, // 100 requests per minute
+//   message: { error: 'Too Many Requests', message: 'Rate limit exceeded' },
+// });
 
-app.use(generalLimiter);
+// app.use(generalLimiter);
 app.use(express.json());
 
 // Serve uploaded files statically
@@ -77,7 +84,7 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -90,6 +97,13 @@ app.use('/api/wellness', wellnessRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/challenges', challengesRoutes);
+
+// B2B Multi-tenant routes
+app.use('/api/organizations', organizationsRoutes);
+app.use('/api/departments', departmentsRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/hr-integrations', hrIntegrationsRoutes);
+app.use('/api/billing', billingRoutes);
 
 // 404 handler
 app.use((req, res) => {

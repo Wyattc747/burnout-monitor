@@ -25,6 +25,24 @@ import type {
   InterventionType,
   OutcomeStatus,
   Zone,
+  // B2B Types
+  Organization,
+  Department,
+  HRIntegration,
+  HRSyncLog,
+  EmployeeInvitation,
+  OrganizationStats,
+  AuditLogEntry,
+  SubscriptionInfo,
+  SubscriptionTierInfo,
+  Invoice,
+  UsageStats,
+  UserRole,
+  RegisterOrganizationData,
+  AcceptInvitationData,
+  InvitationDetails,
+  HRProvider,
+  EmploymentStatus,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -144,6 +162,24 @@ export const authApi = {
     jobTitle?: string;
   }): Promise<AuthResponse & { message: string }> => {
     const { data } = await api.post('/auth/register', userData);
+    return data;
+  },
+
+  // B2B Organization Registration
+  registerOrganization: async (data: RegisterOrganizationData): Promise<AuthResponse> => {
+    const { data: response } = await api.post('/auth/register-organization', data);
+    return response;
+  },
+
+  // Accept employee invitation
+  acceptInvitation: async (invitationData: AcceptInvitationData): Promise<AuthResponse> => {
+    const { data } = await api.post('/auth/accept-invitation', invitationData);
+    return data;
+  },
+
+  // Get invitation details by token
+  getInvitation: async (token: string): Promise<InvitationDetails> => {
+    const { data } = await api.get(`/auth/invitation/${token}`);
     return data;
   },
 
@@ -840,6 +876,331 @@ export const interventionsApi = {
     recentInterventions: Intervention[];
   }> => {
     const { data } = await api.get('/interventions/stats');
+    return data;
+  },
+};
+
+// ============================================
+// B2B ORGANIZATION APIs
+// ============================================
+
+// Organizations API
+export const organizationsApi = {
+  // Get current organization
+  getCurrent: async (): Promise<Organization> => {
+    const { data } = await api.get('/organizations/current');
+    return data;
+  },
+
+  // Update organization settings
+  updateCurrent: async (updates: Partial<Pick<Organization, 'name' | 'logoUrl' | 'primaryColor' | 'settings'>>): Promise<Organization> => {
+    const { data } = await api.put('/organizations/current', updates);
+    return data;
+  },
+
+  // Get organization statistics
+  getStats: async (): Promise<OrganizationStats> => {
+    const { data } = await api.get('/organizations/current/stats');
+    return data;
+  },
+
+  // Get recent activity
+  getActivity: async (limit = 20): Promise<AuditLogEntry[]> => {
+    const { data } = await api.get('/organizations/current/activity', { params: { limit } });
+    return data;
+  },
+};
+
+// Departments API
+export const departmentsApi = {
+  // Get all departments (flat list)
+  getAll: async (): Promise<Department[]> => {
+    const { data } = await api.get('/departments');
+    return data;
+  },
+
+  // Get department hierarchy tree
+  getTree: async (): Promise<Department[]> => {
+    const { data } = await api.get('/departments/tree');
+    return data;
+  },
+
+  // Get single department
+  getById: async (id: string): Promise<Department> => {
+    const { data } = await api.get(`/departments/${id}`);
+    return data;
+  },
+
+  // Create department
+  create: async (department: {
+    name: string;
+    code?: string;
+    description?: string;
+    parentDepartmentId?: string;
+  }): Promise<Department> => {
+    const { data } = await api.post('/departments', department);
+    return data;
+  },
+
+  // Update department
+  update: async (id: string, updates: Partial<Pick<Department, 'name' | 'code' | 'description' | 'parentDepartmentId' | 'isActive' | 'sortOrder'>>): Promise<Department> => {
+    const { data } = await api.put(`/departments/${id}`, updates);
+    return data;
+  },
+
+  // Delete department
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/departments/${id}`);
+  },
+
+  // Get employees in department
+  getEmployees: async (id: string, includeSubdepartments = false): Promise<Employee[]> => {
+    const { data } = await api.get(`/departments/${id}/employees`, { params: { includeSubdepartments } });
+    return data;
+  },
+
+  // Assign department manager
+  setManager: async (id: string, employeeId: string | null): Promise<Department> => {
+    const { data } = await api.put(`/departments/${id}/manager`, { employeeId });
+    return data;
+  },
+};
+
+// Billing API
+export const billingApi = {
+  // Get current subscription info
+  getSubscription: async (): Promise<SubscriptionInfo> => {
+    const { data } = await api.get('/billing');
+    return data;
+  },
+
+  // Get available subscription tiers
+  getTiers: async (): Promise<{ tiers: SubscriptionTierInfo[] }> => {
+    const { data } = await api.get('/billing/tiers');
+    return data;
+  },
+
+  // Create checkout session for new subscription
+  createCheckout: async (tier: string, successUrl?: string, cancelUrl?: string): Promise<{ sessionId: string; url: string }> => {
+    const { data } = await api.post('/billing/checkout', { tier, successUrl, cancelUrl });
+    return data;
+  },
+
+  // Create billing portal session for managing subscription
+  createPortal: async (returnUrl?: string): Promise<{ url: string }> => {
+    const { data } = await api.post('/billing/portal', { returnUrl });
+    return data;
+  },
+
+  // Get usage statistics
+  getUsage: async (): Promise<UsageStats> => {
+    const { data } = await api.get('/billing/usage');
+    return data;
+  },
+
+  // Check if can add more employees
+  checkLimit: async (count?: number): Promise<{ allowed: boolean; current: number; max: number; message?: string }> => {
+    const { data } = await api.post('/billing/check-limit', { count });
+    return data;
+  },
+
+  // Get invoice history
+  getInvoices: async (limit = 10): Promise<{ invoices: Invoice[] }> => {
+    const { data } = await api.get('/billing/invoices', { params: { limit } });
+    return data;
+  },
+};
+
+// HR Integrations API
+export const hrIntegrationsApi = {
+  // Get all integrations (returns connected integrations)
+  getAll: async (): Promise<any[]> => {
+    const { data } = await api.get('/hr-integrations');
+    // Backend returns { providers: [...] } where each provider has a 'connected' field if connected
+    const providers = data.providers || [];
+    // Filter to only connected integrations and transform to expected shape
+    return providers
+      .filter((p: any) => p.connected)
+      .map((p: any) => ({
+        id: p.connected.id,
+        provider: p.id,
+        status: p.connected.status,
+        lastSyncAt: p.connected.lastSyncAt,
+        employeeCount: p.connected.employeeCount || 0,
+        ...p.connected,
+      }));
+  },
+
+  // Get available providers (returns all providers with their connection status)
+  getProviders: async (): Promise<{ providers: Array<{ id: HRProvider; name: string; authType: string; description: string; connected?: any }> }> => {
+    const { data } = await api.get('/hr-integrations');
+    return data;
+  },
+
+  // Connect to an HR provider (API key auth)
+  connect: async (provider: HRProvider, credentials: Record<string, string>): Promise<HRIntegration> => {
+    const { data } = await api.post(`/hr-integrations/${provider}/connect`, credentials);
+    return data;
+  },
+
+  // Get OAuth URL for providers that use OAuth
+  getOAuthUrl: async (provider: HRProvider, redirectUri?: string): Promise<{ url: string }> => {
+    const { data } = await api.get(`/hr-integrations/${provider}/oauth-url`, { params: { redirectUri } });
+    return data;
+  },
+
+  // Complete OAuth flow
+  completeOAuth: async (provider: HRProvider, code: string, state?: string): Promise<HRIntegration> => {
+    const { data } = await api.post(`/hr-integrations/${provider}/oauth-callback`, { code, state });
+    return data;
+  },
+
+  // Disconnect integration
+  disconnect: async (provider: HRProvider): Promise<void> => {
+    await api.delete(`/hr-integrations/${provider}`);
+  },
+
+  // Trigger manual sync
+  sync: async (provider: HRProvider): Promise<HRSyncLog> => {
+    const { data } = await api.post(`/hr-integrations/${provider}/sync`);
+    return data;
+  },
+
+  // Get sync logs
+  getLogs: async (provider: HRProvider, limit = 20): Promise<{ logs: HRSyncLog[] }> => {
+    const { data } = await api.get(`/hr-integrations/${provider}/logs`, { params: { limit } });
+    return data;
+  },
+
+  // Get field mappings
+  getMappings: async (provider: HRProvider): Promise<{ mappings: Record<string, string> }> => {
+    const { data } = await api.get(`/hr-integrations/${provider}/mappings`);
+    return data;
+  },
+
+  // Update field mappings
+  updateMappings: async (provider: HRProvider, mappings: Record<string, string>): Promise<{ mappings: Record<string, string> }> => {
+    const { data } = await api.put(`/hr-integrations/${provider}/mappings`, { mappings });
+    return data;
+  },
+
+  // Preview import before syncing
+  preview: async (provider: HRProvider): Promise<{
+    employees: Array<{ action: 'create' | 'update' | 'skip'; data: Partial<Employee>; reason?: string }>;
+    departments: Array<{ action: 'create' | 'update' | 'skip'; data: Partial<Department>; reason?: string }>;
+  }> => {
+    const { data } = await api.get(`/hr-integrations/${provider}/preview`);
+    return data;
+  },
+
+  // Update sync settings
+  updateSettings: async (provider: HRProvider, settings: {
+    syncFrequency?: string;
+    autoSyncEnabled?: boolean;
+  }): Promise<HRIntegration> => {
+    const { data } = await api.put(`/hr-integrations/${provider}/settings`, settings);
+    return data;
+  },
+};
+
+// Admin API (for organization admins)
+export const adminApi = {
+  // Get all employees with filters
+  getEmployees: async (params?: {
+    search?: string;
+    department?: string;
+    status?: EmploymentStatus;
+    zone?: Zone;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<{
+    employees: Employee[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  }> => {
+    const { data } = await api.get('/admin/employees', { params });
+    return data;
+  },
+
+  // Send bulk invitations
+  inviteEmployees: async (invitations: Array<{
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    role?: UserRole;
+    departmentId?: string;
+    jobTitle?: string;
+  }>): Promise<{
+    sent: number;
+    failed: Array<{ email: string; error: string }>;
+    invitations: EmployeeInvitation[];
+  }> => {
+    const { data } = await api.post('/admin/employees/invite', { invitations });
+    return data;
+  },
+
+  // Bulk import from CSV
+  importEmployees: async (file: File): Promise<{
+    created: number;
+    updated: number;
+    failed: number;
+    errors: Array<{ row: number; error: string }>;
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post('/admin/employees/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
+
+  // Update employee role
+  updateEmployeeRole: async (employeeId: string, role: UserRole): Promise<Employee> => {
+    const { data } = await api.put(`/admin/employees/${employeeId}/role`, { role });
+    return data;
+  },
+
+  // Update employee status
+  updateEmployeeStatus: async (employeeId: string, status: EmploymentStatus): Promise<Employee> => {
+    const { data } = await api.put(`/admin/employees/${employeeId}/status`, { status });
+    return data;
+  },
+
+  // Update employee manager
+  updateEmployee: async (employeeId: string, updates: { managerId?: string | null }): Promise<any> => {
+    const { data } = await api.put(`/admin/employees/${employeeId}/manager`, updates);
+    return data;
+  },
+
+  // Get pending invitations
+  getInvitations: async (status?: 'pending' | 'accepted' | 'expired' | 'revoked'): Promise<EmployeeInvitation[]> => {
+    const { data } = await api.get('/admin/invitations', { params: { status } });
+    return data;
+  },
+
+  // Resend invitation
+  resendInvitation: async (id: string): Promise<EmployeeInvitation> => {
+    const { data } = await api.post(`/admin/invitations/${id}/resend`);
+    return data;
+  },
+
+  // Revoke invitation
+  revokeInvitation: async (id: string): Promise<void> => {
+    await api.delete(`/admin/invitations/${id}`);
+  },
+
+  // Get audit log
+  getAuditLog: async (params?: {
+    action?: string;
+    userId?: string;
+    resourceType?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ entries: AuditLogEntry[]; total: number }> => {
+    const { data } = await api.get('/admin/audit-log', { params });
     return data;
   },
 };

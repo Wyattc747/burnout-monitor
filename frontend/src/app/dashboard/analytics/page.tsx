@@ -12,7 +12,7 @@ import type { Employee } from '@/types';
 import { ChevronLeft, BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
 
 export default function AnalyticsPage() {
-  const { user, isLoading: authLoading } = useRequireAuth('manager');
+  const { user, isLoading: authLoading } = useRequireAuth({ requiredRoles: ['manager', 'admin', 'super_admin'] });
 
   const { data: employees, isLoading } = useQuery({
     queryKey: ['team-members'],

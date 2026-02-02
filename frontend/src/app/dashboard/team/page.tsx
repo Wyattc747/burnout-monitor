@@ -16,7 +16,7 @@ type SortOrder = 'asc' | 'desc';
 type ZoneFilter = 'all' | 'red' | 'yellow' | 'green';
 
 export default function TeamPage() {
-  const { user, isLoading: authLoading } = useRequireAuth('manager');
+  const { user, isLoading: authLoading } = useRequireAuth({ requiredRoles: ['manager', 'admin', 'super_admin'] });
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();

@@ -7,6 +7,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import { Navbar } from '@/components/Navbar';
 import { integrationsApi } from '@/lib/api';
+import { LogoIcon } from '@/components/Logo';
 
 type OnboardingStep = 'welcome' | 'health-devices' | 'work-systems' | 'complete';
 
@@ -384,7 +385,7 @@ function WelcomeStep({ user, onContinue }: { user: any; onContinue: () => void }
   return (
     <div className="text-center py-8">
       <div className="w-24 h-24 mx-auto mb-6 bg-indigo-100 rounded-full flex items-center justify-center">
-        <img src="/logo.svg" alt="ShepHerd" className="w-16 h-16" />
+        <LogoIcon size={48} />
       </div>
       <h2 className="text-2xl font-bold text-gray-900 mb-2">
         Welcome to ShepHerd, {user?.email?.split('@')[0]}!

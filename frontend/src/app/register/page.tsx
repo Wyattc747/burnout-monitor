@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { LogoFull } from '@/components/Logo';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -55,11 +56,41 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <img src="/logo.svg" alt="ShepHerd" className="h-16 w-auto mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900">Create Account</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <div className="flex justify-center mb-4">
+            <LogoFull />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Create Account</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Join ShepHerd to monitor your wellness
           </p>
+        </div>
+
+        {/* B2B Signup CTA */}
+        <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">🏢</div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-indigo-900 dark:text-indigo-200">Setting up for your company?</h3>
+              <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">
+                Create an organization account to manage your team, set up departments, and access admin features.
+              </p>
+              <Link
+                href="/signup/business"
+                className="inline-block mt-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
+              >
+                Sign up as a business &rarr;
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-gray-50 dark:bg-gray-900 text-gray-500">Or try the demo</span>
+          </div>
         </div>
 
         <div className="card">

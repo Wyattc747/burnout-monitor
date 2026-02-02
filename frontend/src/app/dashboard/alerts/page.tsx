@@ -13,7 +13,7 @@ type AlertFilter = 'all' | 'unacknowledged' | 'acknowledged';
 type AlertTypeFilter = 'all' | 'burnout' | 'opportunity';
 
 export default function AlertsPage() {
-  const { user, isLoading: authLoading } = useRequireAuth('manager');
+  const { user, isLoading: authLoading } = useRequireAuth({ requiredRoles: ['manager', 'admin', 'super_admin'] });
   const queryClient = useQueryClient();
 
   const [statusFilter, setStatusFilter] = useState<AlertFilter>('unacknowledged');

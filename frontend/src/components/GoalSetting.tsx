@@ -104,23 +104,17 @@ export function GoalSetting() {
   const { data: goals, isLoading: loadingGoals } = useQuery({
     queryKey: ['goals'],
     queryFn: goalsApi.getAll,
+    staleTime: 30000, // Cache for 30 seconds
   });
 
-  const { data: suggestions } = useQuery({
-    queryKey: ['goals', 'suggestions'],
-    queryFn: async () => {
-      try {
-        return await goalsApi.getSuggestions();
-      } catch {
-        // Fall back to default suggestions if endpoint doesn't exist yet
-        return DEFAULT_SUGGESTIONS;
-      }
-    },
-  });
+  // Use default suggestions immediately - no API call needed
+  const suggestions = DEFAULT_SUGGESTIONS;
 
   const { data: streaks } = useQuery({
     queryKey: ['wellness-streaks'],
     queryFn: wellnessApi.getStreaks,
+    staleTime: 60000, // Cache for 1 minute
+    retry: 1, // Only retry once on failure
   });
 
   const deleteGoal = useMutation({
@@ -278,7 +272,7 @@ export function GoalSetting() {
       {showAddModal && (
         <AddGoalModal
           initialGoalType={selectedGoalType}
-          suggestions={suggestions || DEFAULT_SUGGESTIONS}
+          suggestions={suggestions}
           onClose={() => {
             setShowAddModal(false);
             setSelectedGoalType(null);

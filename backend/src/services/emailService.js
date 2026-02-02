@@ -1,16 +1,40 @@
 const nodemailer = require('nodemailer');
 const db = require('../utils/db');
 
+// Check if SMTP is configured
+const isSmtpConfigured = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+
 // Create transporter (use env vars in production)
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-  port: process.env.SMTP_PORT || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+let transporter = null;
+if (isSmtpConfigured) {
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT || 587,
+    secure: process.env.SMTP_PORT === '465',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+  console.log('Email service configured with SMTP host:', process.env.SMTP_HOST);
+} else {
+  console.log('Email service: SMTP not configured. Emails will be logged but not sent.');
+}
+
+/**
+ * Send an email (or log it if SMTP is not configured)
+ */
+async function sendEmail(mailOptions) {
+  if (!transporter) {
+    console.log('=== EMAIL (not sent - SMTP not configured) ===');
+    console.log('To:', mailOptions.to);
+    console.log('Subject:', mailOptions.subject);
+    console.log('Preview URL would be sent to:', mailOptions.to);
+    console.log('=============================================');
+    return { accepted: [mailOptions.to], messageId: 'dev-' + Date.now() };
+  }
+  return transporter.sendMail(mailOptions);
+}
 
 /**
  * Send a weekly wellness summary email
@@ -190,7 +214,7 @@ async function sendWeeklySummary(userId, employeeId) {
     `;
 
     // Send email
-    await transporter.sendMail({
+    await sendEmail({
       from: process.env.SMTP_FROM || '"ShepHerd" <noreply@shepherd.com>',
       to: email,
       subject: `Your Weekly Wellness Summary - ${first_name}`,
@@ -272,7 +296,7 @@ async function sendCheckinReminder(userId, employeeId) {
       </html>
     `;
 
-    await transporter.sendMail({
+    await sendEmail({
       from: process.env.SMTP_FROM || '"ShepHerd" <noreply@shepherd.com>',
       to: email,
       subject: 'Daily Wellness Check-in Reminder',
@@ -287,8 +311,179 @@ async function sendCheckinReminder(userId, employeeId) {
   }
 }
 
+/**
+ * Send an employee invitation email
+ */
+async function sendInvitationEmail(invitation, organizationName) {
+  try {
+    const {
+      email,
+      firstName,
+      lastName,
+      role,
+      jobTitle,
+      departmentName,
+      token,
+      expiresAt,
+      invitedByName,
+    } = invitation;
+
+    const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/invite/${token}`;
+    const displayName = firstName ? `${firstName}` : 'there';
+    const roleDisplay = role === 'admin' ? 'Administrator' : role === 'manager' ? 'Manager' : 'Team Member';
+    const expiresDate = new Date(expiresAt).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>You're Invited to Join ${organizationName}</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 20px;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #4f46e5, #7c3aed); padding: 40px; text-align: center;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 28px;">ShepHerd</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Employee Wellness Platform</p>
+                  </td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <h2 style="color: #111827; margin: 0 0 20px 0; font-size: 24px; text-align: center;">
+                      You're Invited to Join ${organizationName}!
+                    </h2>
+
+                    <p style="color: #4b5563; margin: 0 0 20px 0; line-height: 1.6; font-size: 16px;">
+                      Hi ${displayName},
+                    </p>
+
+                    <p style="color: #4b5563; margin: 0 0 20px 0; line-height: 1.6; font-size: 16px;">
+                      ${invitedByName ? `${invitedByName} has invited you` : 'You have been invited'} to join <strong>${organizationName}</strong> on ShepHerd, our employee wellness platform.
+                    </p>
+
+                    ${jobTitle || departmentName ? `
+                    <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                      <p style="color: #6b7280; margin: 0; font-size: 14px;">Your role details:</p>
+                      <table style="margin-top: 10px;">
+                        ${jobTitle ? `<tr><td style="color: #9ca3af; padding: 4px 0;">Position:</td><td style="color: #111827; padding: 4px 0 4px 10px; font-weight: 500;">${jobTitle}</td></tr>` : ''}
+                        ${departmentName ? `<tr><td style="color: #9ca3af; padding: 4px 0;">Department:</td><td style="color: #111827; padding: 4px 0 4px 10px; font-weight: 500;">${departmentName}</td></tr>` : ''}
+                        <tr><td style="color: #9ca3af; padding: 4px 0;">Access Level:</td><td style="color: #111827; padding: 4px 0 4px 10px; font-weight: 500;">${roleDisplay}</td></tr>
+                      </table>
+                    </div>
+                    ` : ''}
+
+                    <p style="color: #4b5563; margin: 0 0 30px 0; line-height: 1.6; font-size: 16px;">
+                      ShepHerd helps you track your wellness, manage stress, and maintain a healthy work-life balance. Click the button below to create your account and get started.
+                    </p>
+
+                    <!-- CTA Button -->
+                    <div style="text-align: center; margin: 30px 0;">
+                      <a href="${inviteUrl}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px;">Accept Invitation</a>
+                    </div>
+
+                    <p style="color: #9ca3af; margin: 20px 0 0 0; font-size: 14px; text-align: center;">
+                      This invitation expires on ${expiresDate}
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Link fallback -->
+                <tr>
+                  <td style="padding: 0 30px 30px 30px;">
+                    <div style="background-color: #f9fafb; border-radius: 8px; padding: 15px;">
+                      <p style="color: #6b7280; margin: 0; font-size: 12px;">
+                        If the button doesn't work, copy and paste this link into your browser:
+                      </p>
+                      <p style="color: #4f46e5; margin: 8px 0 0 0; font-size: 12px; word-break: break-all;">
+                        ${inviteUrl}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #9ca3af; margin: 0; font-size: 12px;">
+                      If you didn't expect this invitation, you can safely ignore this email.
+                    </p>
+                    <p style="color: #9ca3af; margin: 10px 0 0 0; font-size: 12px;">
+                      &copy; ${new Date().getFullYear()} ShepHerd. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const textContent = `
+You're Invited to Join ${organizationName}!
+
+Hi ${displayName},
+
+${invitedByName ? `${invitedByName} has invited you` : 'You have been invited'} to join ${organizationName} on ShepHerd, our employee wellness platform.
+
+${jobTitle ? `Position: ${jobTitle}` : ''}
+${departmentName ? `Department: ${departmentName}` : ''}
+Access Level: ${roleDisplay}
+
+Click the link below to create your account and get started:
+${inviteUrl}
+
+This invitation expires on ${expiresDate}.
+
+If you didn't expect this invitation, you can safely ignore this email.
+    `;
+
+    await sendEmail({
+      from: process.env.SMTP_FROM || '"ShepHerd" <noreply@shepherd.com>',
+      to: email,
+      subject: `You're invited to join ${organizationName} on ShepHerd`,
+      text: textContent,
+      html,
+    });
+
+    console.log(`Sent invitation email to ${email}`);
+    return { success: true };
+  } catch (err) {
+    console.error('Failed to send invitation email:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Send multiple invitation emails
+ */
+async function sendBulkInvitationEmails(invitations, organizationName) {
+  const results = [];
+  for (const invitation of invitations) {
+    const result = await sendInvitationEmail(invitation, organizationName);
+    results.push({ email: invitation.email, ...result });
+  }
+  return results;
+}
+
 module.exports = {
   sendWeeklySummary,
   sendScheduledWeeklySummaries,
   sendCheckinReminder,
+  sendInvitationEmail,
+  sendBulkInvitationEmails,
 };
