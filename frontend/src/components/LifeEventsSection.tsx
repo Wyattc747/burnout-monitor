@@ -6,7 +6,7 @@ import { personalizationApi } from '@/lib/api';
 import { clsx } from 'clsx';
 import { Plus, X, Calendar, Heart, Briefcase, Home, Plane, Baby, GraduationCap, AlertCircle } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 interface LifeEvent {
   id: string;
@@ -47,7 +47,7 @@ export function LifeEventsSection() {
   const addLifeEvent = useMutation({
     mutationFn: async (event: any) => {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/personalization/life-events`, {
+      const res = await fetch(`${API_URL}/personalization/life-events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Avatar } from './Avatar';
 import { integrationsApi } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 interface MeetingSuggestion {
   employeeId: string;
@@ -25,7 +25,7 @@ interface ScheduleModalProps {
 
 async function fetchMeetingSuggestions(): Promise<MeetingSuggestion[]> {
   const token = localStorage.getItem('token');
-  const res = await fetch(`${API_URL}/api/teams/meeting-suggestions`, {
+  const res = await fetch(`${API_URL}/teams/meeting-suggestions`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch meeting suggestions');
