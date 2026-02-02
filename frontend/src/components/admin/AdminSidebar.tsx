@@ -96,13 +96,13 @@ export function AdminSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {/* Back to main app link */}
+        {/* Link to personal wellness/employee view */}
         <Link
           href="/dashboard"
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50 mb-3 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          Back to Dashboard
+          My Wellness
         </Link>
 
         <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
