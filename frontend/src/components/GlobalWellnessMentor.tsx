@@ -31,22 +31,17 @@ export function GlobalWellnessMentor() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Don't show if not authenticated
-  if (!isAuthenticated || !user) {
-    return null;
-  }
+  // Get the user's first name from the employee data
+  const firstName = user?.employee?.firstName || 'there';
 
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Get the user's first name from the employee data
-  const firstName = user?.employee?.firstName || 'there';
-
   // Initialize with welcome message when opened
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (isOpen && messages.length === 0 && isAuthenticated) {
       const welcomeMessage: Message = {
         id: '1',
         type: 'bot',
@@ -55,7 +50,12 @@ export function GlobalWellnessMentor() {
       };
       setMessages([welcomeMessage]);
     }
-  }, [isOpen, messages.length, firstName]);
+  }, [isOpen, messages.length, firstName, isAuthenticated]);
+
+  // Don't render if not authenticated
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   const handleSend = async (message: string = input) => {
     if (!message.trim() || isTyping) return;
