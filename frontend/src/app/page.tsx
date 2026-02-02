@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { AuthRedirect } from '@/components/AuthRedirect';
 import { MarketingNav, MarketingFooter } from '@/components/marketing';
 
 export default function Home() {
@@ -67,11 +66,7 @@ export default function Home() {
 
 
   return (
-    <>
-      {/* Client component to handle auth redirect */}
-      <AuthRedirect />
-
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
         <MarketingNav />
 
         <main className="pt-16">
@@ -343,6 +338,5 @@ export default function Home() {
 
         <MarketingFooter />
       </div>
-    </>
   );
 }
