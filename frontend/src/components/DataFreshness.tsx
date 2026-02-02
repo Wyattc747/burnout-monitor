@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 interface DataSource {
   id: string;
@@ -75,16 +75,16 @@ async function fetchDataSources(): Promise<DataSource[]> {
   }
 
   // Get integration status
-  const intRes = await fetch('${API_URL}/api/integrations/status', {
+  const intRes = await fetch(`${API_URL}/integrations/status`, {
     headers: { Authorization: `Bearer ${token}` },
   }).catch(() => null);
 
   // Get latest health and work metrics timestamps using the employee ID
-  const healthRes = await fetch(`${API_URL}/api/employees/${employeeId}/health?limit=1`, {
+  const healthRes = await fetch(`${API_URL}/employees/${employeeId}/health?limit=1`, {
     headers: { Authorization: `Bearer ${token}` },
   }).catch(() => null);
 
-  const workRes = await fetch(`${API_URL}/api/employees/${employeeId}/work?limit=1`, {
+  const workRes = await fetch(`${API_URL}/employees/${employeeId}/work?limit=1`, {
     headers: { Authorization: `Bearer ${token}` },
   }).catch(() => null);
 

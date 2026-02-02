@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 interface EmployeeHeatmapData {
   id: string;
@@ -30,7 +30,7 @@ interface TeamAggregates {
 
 async function fetchTeamHeatmap(): Promise<EmployeeHeatmapData[]> {
   const token = localStorage.getItem('token');
-  const res = await fetch('${API_URL}/api/teams/heatmap', {
+  const res = await fetch(`${API_URL}/teams/heatmap`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch heatmap');
@@ -39,7 +39,7 @@ async function fetchTeamHeatmap(): Promise<EmployeeHeatmapData[]> {
 
 async function fetchTeamAggregates(): Promise<TeamAggregates> {
   const token = localStorage.getItem('token');
-  const res = await fetch('${API_URL}/api/teams/aggregates', {
+  const res = await fetch(`${API_URL}/teams/aggregates`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch aggregates');

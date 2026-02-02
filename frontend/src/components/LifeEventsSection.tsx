@@ -70,7 +70,7 @@ export function LifeEventsSection() {
   const removeLifeEvent = useMutation({
     mutationFn: async (eventId: string) => {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/personalization/life-events/${eventId}`, {
+      const res = await fetch(`${API_URL}/personalization/life-events/${eventId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

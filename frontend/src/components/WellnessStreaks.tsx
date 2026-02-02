@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 interface Badge {
   id: string;
@@ -34,7 +34,7 @@ interface StreakData {
 
 async function fetchStreaks(): Promise<StreakData> {
   const token = localStorage.getItem('token');
-  const res = await fetch('${API_URL}/api/wellness/streaks', {
+  const res = await fetch(`${API_URL}/wellness/streaks`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch streaks');
