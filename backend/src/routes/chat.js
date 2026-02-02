@@ -265,24 +265,33 @@ async function logFeelingCheckin(args, employeeId) {
 }
 
 // System prompt for the wellness mentor
-const SYSTEM_PROMPT = `You are Shepherd, a compassionate and knowledgeable wellness mentor for a workplace wellness app called ShepHerd. Your role is to help employees manage stress, improve sleep, maintain work-life balance, and prevent burnout.
+const SYSTEM_PROMPT = `You are Shepherd, an empathetic and insightful AI wellness mentor. You're like a supportive friend who happens to be an expert in workplace wellness, stress management, and burnout prevention.
 
-Guidelines:
-- Be warm, supportive, and non-judgmental
-- Provide evidence-based advice when possible
-- Keep responses concise but helpful (2-4 paragraphs max)
-- Ask follow-up questions to better understand their situation
-- Suggest practical, actionable steps
-- If someone seems to be in crisis, gently encourage them to seek professional help
-- Never diagnose medical or mental health conditions
-- Use their wellness data context to personalize advice
-- Be encouraging about small improvements
+Your personality:
+- Warm, genuine, and conversational - talk like a caring friend, not a corporate bot
+- Curious and attentive - ask thoughtful follow-up questions
+- Encouraging but realistic - celebrate wins without being overly cheerful
+- Direct when needed - don't sugarcoat if someone needs to hear the truth
 
-When discussing their metrics:
-- Frame data positively where possible
-- Focus on trends, not single data points
-- Celebrate improvements, however small
-- Suggest one specific action they could take`;
+Your capabilities:
+- You can ADD LIFE EVENTS when users mention things like new babies, moving, deadlines, health issues, etc.
+- You can CHECK their wellness score and explain what it means
+- You can LOG how they're feeling with a check-in
+- You can PROVIDE personalized recommendations based on their data
+
+Communication style:
+- Keep responses conversational and natural (2-3 short paragraphs max)
+- Use contractions and casual language ("you're", "let's", "that's tough")
+- Vary your responses - don't be repetitive or formulaic
+- Ask ONE focused follow-up question when appropriate
+- When taking actions, confirm what you did naturally in conversation
+
+When someone shares something difficult:
+- Acknowledge their feelings first before offering solutions
+- Don't immediately jump to advice - sometimes people just need to be heard
+- Offer one small, actionable suggestion rather than overwhelming lists
+
+Remember: You have access to their wellness data. Use it to personalize your responses - reference specific metrics when relevant, but don't recite data robotically.`;
 
 // Chat endpoint
 router.post('/', authenticate, async (req, res) => {
@@ -336,23 +345,36 @@ router.post('/', authenticate, async (req, res) => {
       : 'unknown';
 
     // Build context message
-    const contextMessage = `
-User Context:
-- Name: ${employee.first_name}
-- Current wellness zone: ${currentZone.zone.toUpperCase()} (${currentZone.zone === 'red' ? 'needs attention' : currentZone.zone === 'yellow' ? 'moderate' : 'doing well'})
-- Wellness Score: ${Math.round(100 - currentZone.burnout_score)}/100
-- Average sleep (last 7 days): ${avgSleep} hours
-- Average sleep quality: ${avgSleepQuality}/100
-${currentZone.explanation ? `- Key factors: ${JSON.stringify(currentZone.explanation.factors || [])}` : ''}
+    const zoneDescriptions = {
+      red: "struggling - they may be experiencing burnout symptoms and need support",
+      yellow: "managing but could use some attention - not in crisis but not thriving either",
+      green: "doing well - good time for growth, challenges, or helping others"
+    };
 
-Respond to their message with personalized, helpful advice.`;
+    const wellnessScore = Math.round(100 - currentZone.burnout_score);
+
+    const contextMessage = `
+CURRENT USER CONTEXT (use this to personalize your response):
+- Their name: ${employee.first_name}
+- Wellness Score: ${wellnessScore}/100
+- Current state: ${zoneDescriptions[currentZone.zone] || 'unknown'}
+- Recent sleep: averaging ${avgSleep} hours/night (quality: ${avgSleepQuality}/100)
+${currentZone.explanation?.factors ? `- Contributing factors: ${currentZone.explanation.factors.slice(0, 3).join(', ')}` : ''}
+
+Use these tools when appropriate:
+- add_life_event: When they mention life changes (new baby, moving, deadline, health issue, etc.)
+- get_wellness_score: When they ask "how am I doing?" or want to see their score
+- log_feeling_checkin: When they express how they're feeling right now
+- get_recommendations: When they ask for advice or tips`;
 
     // If no OpenAI key, use fallback responses
     if (!OPENAI_API_KEY) {
+      console.log('No OpenAI API key configured - using fallback responses');
       const fallbackResponse = getFallbackResponse(message, currentZone.zone, employee.first_name);
       return res.json({
         response: fallbackResponse,
-        zone: currentZone.zone
+        zone: currentZone.zone,
+        fallback: true
       });
     }
 
@@ -374,7 +396,11 @@ Respond to their message with personalized, helpful advice.`;
     // Add current message
     messages.push({ role: 'user', content: message });
 
+    // Use gpt-4o for better intelligence, fallback to gpt-4o-mini
+    const model = process.env.OPENAI_MODEL || 'gpt-4o';
+
     // Call OpenAI API with function calling
+    console.log(`Calling OpenAI API with model: ${model}`);
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -382,24 +408,25 @@ Respond to their message with personalized, helpful advice.`;
         'Authorization': `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model,
         messages,
         tools: AVAILABLE_FUNCTIONS,
         tool_choice: 'auto',
-        max_tokens: 500,
-        temperature: 0.7,
+        max_tokens: 600,
+        temperature: 0.8,
       })
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('OpenAI API error:', error);
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
       // Fall back to rule-based response
       const fallbackResponse = getFallbackResponse(message, currentZone.zone, employee.first_name);
       return res.json({
         response: fallbackResponse,
         zone: currentZone.zone,
-        fallback: true
+        fallback: true,
+        error: `API error: ${response.status}`
       });
     }
 
@@ -480,6 +507,15 @@ Respond to their message with personalized, helpful advice.`;
 function getFallbackResponse(message, zone, firstName) {
   const lowerMessage = message.toLowerCase();
 
+  // Detect if they want to add a life event
+  if (lowerMessage.includes('new baby') || lowerMessage.includes('baby')) {
+    return `It sounds like you have some exciting news about a baby! To add this as a life event, I'll need to connect to our AI service. In the meantime, you can add it directly from your dashboard by clicking "+ Add life event" in the Life Events section. This will adjust your wellness expectations accordingly.`;
+  }
+
+  if (lowerMessage.includes('moving') || lowerMessage.includes('relocat')) {
+    return `Moving is a big life change! You can add this as a life event from your dashboard - just click "+ Add life event" and select "Moving/Relocating". This will help us adjust your wellness expectations during this transition.`;
+  }
+
   // Detect topic
   let topic = 'general';
   if (lowerMessage.includes('stress') || lowerMessage.includes('anxious') || lowerMessage.includes('overwhelm')) {
@@ -488,26 +524,31 @@ function getFallbackResponse(message, zone, firstName) {
     topic = 'sleep';
   } else if (lowerMessage.includes('work') || lowerMessage.includes('deadline') || lowerMessage.includes('busy')) {
     topic = 'workload';
+  } else if (lowerMessage.includes('how am i') || lowerMessage.includes('my score') || lowerMessage.includes('doing')) {
+    topic = 'score';
   }
 
   const responses = {
     red: {
-      general: `I can see things have been challenging lately, ${firstName}. Your recent metrics suggest this might be a good time to focus on recovery. What's weighing on you most right now?`,
-      stress: `I understand you're feeling stressed. When we're in a challenging zone, even small steps help. Try this: take 3 deep breaths right now, breathing in for 4 counts and out for 6. Then identify just ONE thing you can take off your plate today.`,
-      sleep: `Sleep is crucial for recovery, and I can see yours could use some attention. Tonight, try setting a "wind down" alarm 30 minutes before bed - no screens, dim lights, maybe some light stretching. Small improvements compound over time.`,
-      workload: `Your workload seems to be impacting your wellness. Remember: sustainable pace beats burnout sprints. Can you identify your top 3 priorities and delegate or defer the rest? It's okay to say "not right now."`,
+      general: `Hey ${firstName}, I can see things have been tough lately. Your wellness score shows you're in a challenging spot right now. What's been weighing on you the most?`,
+      stress: `I hear you on the stress, ${firstName}. When you're feeling this way, even tiny steps help. How about this: right now, take three slow breaths - in for 4, out for 6. Then tell me one thing on your plate that could wait until tomorrow.`,
+      sleep: `Sleep is huge for recovery, and yours has been struggling a bit. Here's one thing to try tonight: set a "wind down" alarm 30 minutes before bed. Dim the lights, put away screens, maybe do some light stretching. What time do you usually try to sleep?`,
+      workload: `It sounds like work is really piling up. Here's the thing - sustainable pace always beats burnout sprints. What are your actual top 3 priorities this week? Everything else might need to wait or go to someone else.`,
+      score: `Your wellness score is showing you're in the red zone right now, ${firstName}. That means your body and mind are telling you they need some extra care. The good news? Small improvements compound fast. What area feels most urgent - sleep, stress, or workload?`
     },
     yellow: {
-      general: `You're in a stable place, ${firstName}. This is actually a great time to build habits that will help when things get busier. What area would you like to focus on improving?`,
-      stress: `Your stress levels are manageable right now. To keep them that way, consider building in buffer time between meetings and protecting at least one hour of focus time daily. Prevention is easier than recovery!`,
-      sleep: `Your sleep is decent but there's room for optimization. Small changes make a big difference - try going to bed just 15 minutes earlier this week. Your body will thank you.`,
-      workload: `Your workload seems balanced currently. Use this time to build systems that'll help when things get busy - document processes, set up templates, or tackle that technical debt.`,
+      general: `Hey ${firstName}! You're in a stable spot - not struggling, but not quite at peak either. This is actually a great time to build habits that'll help when things get busy. What's one area you'd like to focus on?`,
+      stress: `Your stress is manageable right now, ${firstName}. To keep it that way, consider protecting at least one hour of focus time daily. What's one meeting you could skip or make async this week?`,
+      sleep: `Your sleep is decent but has room to improve. Here's a simple challenge: try going to bed just 15 minutes earlier for the next 3 days. It adds up faster than you'd think. What time are you usually hitting the pillow?`,
+      workload: `Workload looks balanced right now. This is the perfect time to build systems for when things get crazy - document a process, create a template, or tackle some technical debt. What's been on your "I should really do this" list?`,
+      score: `Your wellness score puts you in the yellow zone - you're stable but have room to optimize. Your sleep and work metrics are decent. Is there a specific area you'd like to improve?`
     },
     green: {
-      general: `You're doing great, ${firstName}! Your metrics look strong. This is the perfect time to take on challenging work or help a teammate who might be struggling. What ambitious goal would you like to work towards?`,
-      stress: `Your stress indicators are healthy - excellent work! Consider using some of this capacity to mentor others or take on that stretch project you've been eyeing.`,
-      sleep: `Your sleep is excellent! Keep doing what you're doing. This kind of recovery is what enables peak performance. What would you like to accomplish while you're at your best?`,
-      workload: `Your capacity is strong right now. Consider volunteering for high-visibility projects or learning new skills. You're well-positioned to make an impact!`,
+      general: `Nice work, ${firstName}! Your metrics look solid. You're in a great position to take on challenges or help teammates who might be struggling. What's something ambitious you'd like to tackle?`,
+      stress: `Your stress levels are healthy - that's excellent! With this kind of capacity, you might consider mentoring someone or taking on that stretch project you've been eyeing. What sounds interesting?`,
+      sleep: `Your sleep is excellent! Whatever you're doing, keep it up. This kind of recovery is what enables peak performance. What would you like to accomplish while you're at your best?`,
+      workload: `You've got good capacity right now. This is a great time for high-visibility projects or learning something new. What's been on your "someday" list?`,
+      score: `Great news, ${firstName}! Your wellness score has you in the green zone - that means you're thriving. Your sleep, stress, and workload are all looking good. This is the perfect time to pursue growth opportunities or help others!`
     }
   };
 

@@ -6,6 +6,7 @@ import { AuthProvider } from './auth';
 import { ThemeProvider } from '@/components/ThemeToggle';
 import { ToastProvider } from '@/components/Toast';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
+import { GlobalWellnessMentor } from '@/components/GlobalWellnessMentor';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -27,6 +28,7 @@ export function Providers({ children }: { children: ReactNode }) {
           <AuthProvider>
             <ServiceWorkerRegistration />
             {children}
+            <GlobalWellnessMentor />
           </AuthProvider>
         </ToastProvider>
       </ThemeProvider>
